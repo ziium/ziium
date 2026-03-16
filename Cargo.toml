@@ -1,0 +1,12 @@
+[package]
+name = "ziium"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "ziium"
+path = "src/lib.rs"
+
+[dependencies]
+rustyline = "17.0.2"
+unicode-width = "0.2.2"

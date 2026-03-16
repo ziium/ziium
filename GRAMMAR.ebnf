@@ -1,0 +1,111 @@
+(* v0.1 parser grammar *)
+(* The lexer is responsible for splitting attached particles.
+   Example: "사람의" -> IDENT("사람") GEN("의") *)
+
+program         = { newline }, { statement, { newline } }, EOF ;
+
+statement       = bind_stmt
+                | assign_stmt
+                | print_stmt
+                | return_stmt
+                | if_stmt
+                | while_stmt
+                | function_def
+                | call_stmt
+                ;
+
+bind_stmt       = IDENT, TOPIC, expression, COPULA, [ PERIOD ] ;
+assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ] ;
+print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
+return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
+call_stmt       = call_expr, [ PERIOD ] ;
+
+if_stmt         = expression, IF,
+                  newline, INDENT, block, DEDENT,
+                  [ ELSE, newline, INDENT, block, DEDENT ] ;
+
+while_stmt      = expression, IN, DURING,
+                  newline, INDENT, block, DEDENT ;
+
+function_def    = IDENT, FUNCTION, FUNCTION_TOPIC,
+                  (
+                    param_list, OBJECT, RECEIVE
+                  | NOTHING, RECEIVE_NOT, RECEIVE_NEG
+                  ),
+                  newline, INDENT, block, DEDENT ;
+
+block           = statement, { newline, statement }, { newline } ;
+
+param_list      = IDENT, { COMMA, IDENT } ;
+arg_list        = expression, { COMMA, expression } ;
+
+expression      = logic_or ;
+
+logic_or        = logic_and, { OR, logic_and } ;
+logic_and       = equality, { AND, equality } ;
+equality        = comparison, { ( EQ | NE ), comparison } ;
+comparison      = additive, { ( LT | LE | GT | GE ), additive } ;
+additive        = multiplicative, { ( PLUS | MINUS ), multiplicative } ;
+multiplicative  = unary, { ( STAR | SLASH | PERCENT ), unary } ;
+unary           = { ( MINUS | NOT ) }, postfix ;
+
+postfix         = primary, { call_suffix | index_suffix | property_suffix } ;
+call_expr       = primary,
+                  { index_suffix | property_suffix },
+                  call_suffix,
+                  { call_suffix | index_suffix | property_suffix } ;
+
+call_suffix     = LPAREN, [ arg_list ], RPAREN ;
+index_suffix    = LBRACKET, expression, RBRACKET ;
+property_suffix = GEN, IDENT ;
+
+primary         = IDENT
+                | INT
+                | FLOAT
+                | STRING
+                | TRUE
+                | FALSE
+                | NONE
+                | list_literal
+                | record_literal
+                | LPAREN, expression, RPAREN
+                ;
+
+list_literal    = LBRACKET, [ expression, { COMMA, expression } ], RBRACKET ;
+record_literal  = LBRACE, [ record_entry, { COMMA, record_entry } ], RBRACE ;
+record_entry    = ( IDENT | STRING ), COLON, expression ;
+
+newline         = NEWLINE ;
+
+(* token aliases *)
+TOPIC           = "은" | "는" ;
+OBJECT          = "을" | "를" ;
+GEN             = "의" ;
+DIRECTION       = "로" | "으로" ;
+PERIOD          = "." ;
+COPULA          = "이다" ;
+IF              = "이면" ;
+ELSE            = "아니면" ;
+IN              = "인" ;
+DURING          = "동안" ;
+FUNCTION        = "함수" ;
+FUNCTION_TOPIC  = "는" ;
+RECEIVE         = "받아" ;
+NOTHING         = "아무것도" ;
+RECEIVE_NOT     = "받지" ;
+RECEIVE_NEG     = "않아" ;
+PRINT           = "출력한다" ;
+RETURN          = "돌려준다" ;
+CHANGE          = "바꾼다" ;
+TRUE            = "참" ;
+FALSE           = "거짓" ;
+NONE            = "없음" ;
+AND             = "그리고" ;
+OR              = "또는" ;
+NOT             = "아니다" ;
+
+(* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
+   INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,
+   RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE, COMMA, COLON, PLUS,
+   MINUS, STAR, SLASH, PERCENT, EQ, NE, LT, LE, GT, GE are emitted
+   directly by the lexer. *)

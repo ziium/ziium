@@ -1,0 +1,99 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Program {
+    pub statements: Vec<Stmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Stmt {
+    Bind {
+        name: String,
+        value: Expr,
+    },
+    Assign {
+        name: String,
+        value: Expr,
+    },
+    Print {
+        value: Expr,
+    },
+    Return {
+        value: Expr,
+    },
+    If {
+        condition: Expr,
+        then_block: Vec<Stmt>,
+        else_block: Option<Vec<Stmt>>,
+    },
+    While {
+        condition: Expr,
+        body: Vec<Stmt>,
+    },
+    FunctionDef {
+        name: String,
+        params: Vec<String>,
+        body: Vec<Stmt>,
+    },
+    Expr(Expr),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expr {
+    Name(String),
+    Int(String),
+    Float(String),
+    String(String),
+    Bool(bool),
+    None,
+    List(Vec<Expr>),
+    Record(Vec<RecordEntry>),
+    Unary {
+        op: UnaryOp,
+        expr: Box<Expr>,
+    },
+    Binary {
+        left: Box<Expr>,
+        op: BinaryOp,
+        right: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        args: Vec<Expr>,
+    },
+    Index {
+        base: Box<Expr>,
+        index: Box<Expr>,
+    },
+    Property {
+        base: Box<Expr>,
+        name: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordEntry {
+    pub key: String,
+    pub value: Expr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOp {
+    Negate,
+    Not,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    And,
+    Or,
+}
