@@ -1,4 +1,4 @@
-import init, { run_source_web, ziium_version } from "./pkg/ziium.js";
+import init, { run_source_web } from "./pkg/ziium.js";
 
 const demos = {
   "text-hanoi": {
@@ -83,7 +83,6 @@ const outputPanel = document.querySelector(".panel-output");
 const demoTitle = document.querySelector("#demoTitle");
 const demoSummary = document.querySelector("#demoSummary");
 const statusText = document.querySelector("#statusText");
-const versionBadge = document.querySelector("#versionBadge");
 const canvasPanel = document.querySelector("#canvasPanel");
 const canvasStatus = document.querySelector("#canvasStatus");
 const canvasInfo = document.querySelector("#canvasInfo");
@@ -97,7 +96,6 @@ let animationTimer = null;
 
 async function main() {
   await init();
-  versionBadge.textContent = `ziium ${ziium_version()}`;
   bindEvents();
   loadDemo(currentDemoId);
 }
