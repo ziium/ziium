@@ -79,12 +79,14 @@ const demos = {
 
 const editor = document.querySelector("#editor");
 const output = document.querySelector("#output");
+const outputPanel = document.querySelector(".panel-output");
 const demoTitle = document.querySelector("#demoTitle");
 const demoSummary = document.querySelector("#demoSummary");
 const statusText = document.querySelector("#statusText");
 const versionBadge = document.querySelector("#versionBadge");
 const canvasPanel = document.querySelector("#canvasPanel");
 const canvasStatus = document.querySelector("#canvasStatus");
+const canvasInfo = document.querySelector("#canvasInfo");
 const canvas = document.querySelector("#hanoiCanvas");
 const runButton = document.querySelector("#runButton");
 const demoButtons = [...document.querySelectorAll("[data-demo]")];
@@ -118,11 +120,15 @@ function loadDemo(demoId) {
   editor.value = demo.source;
   demoTitle.textContent = demo.title;
   demoSummary.textContent = demo.summary;
-  statusText.textContent = "실행 버튼을 누르면 결과가 여기에 나옵니다.";
-  output.textContent = demo.renderer === "canvas"
-    ? "이 데모는 출력보다 캔버스 프레임이 핵심입니다."
-    : "아직 실행하지 않았습니다.";
-  canvasPanel.classList.toggle("is-hidden", demo.renderer !== "canvas");
+  output.textContent = "아직 실행하지 않았습니다.";
+  canvasInfo.textContent = "아직 실행하지 않았습니다.";
+  setRightPanel(demo.renderer);
+
+  if (demo.renderer === "canvas") {
+    canvasStatus.textContent = "지음 코드가 만든 캔버스 프레임을 기다리는 중입니다.";
+  } else {
+    statusText.textContent = "실행 버튼을 누르면 결과가 여기에 나옵니다.";
+  }
 
   for (const button of demoButtons) {
     button.classList.toggle("is-active", button.dataset.demo === demoId);
@@ -130,10 +136,6 @@ function loadDemo(demoId) {
 
   stopAnimation();
   clearCanvas();
-  canvasStatus.textContent =
-    demo.renderer === "canvas"
-      ? "지음 코드가 만든 캔버스 프레임을 기다리는 중입니다."
-      : "캔버스 데모가 선택되면 여기에서 하노이탑을 그립니다.";
 }
 
 function runCurrentDemo() {
@@ -143,10 +145,12 @@ function runCurrentDemo() {
 
   if (!result.ok) {
     output.textContent = result.error;
-    statusText.textContent = "실행 오류";
     clearCanvas();
     if (demo.renderer === "canvas") {
-      canvasStatus.textContent = "오류 때문에 캔버스를 그리지 못했습니다.";
+      canvasStatus.textContent = "실행 오류";
+      canvasInfo.textContent = result.error;
+    } else {
+      statusText.textContent = "실행 오류";
     }
     return;
   }
@@ -155,17 +159,23 @@ function runCurrentDemo() {
   const frames = JSON.parse(result.canvas_frames_json || "[]");
 
   if (demo.renderer === "canvas") {
-    output.textContent =
+    canvasInfo.textContent =
       text === ""
         ? `출력 없음\n캔버스 프레임 ${frames.length}개 생성`
         : `${text}\n\n캔버스 프레임 ${frames.length}개 생성`;
-    statusText.textContent = `실행 성공: 캔버스 프레임 ${frames.length}개`;
+    canvasStatus.textContent = `실행 성공: 캔버스 프레임 ${frames.length}개`;
     renderCanvasFrames(frames);
     return;
   }
 
   output.textContent = text === "" ? "(출력 없음)" : text;
   statusText.textContent = `실행 성공: ${countNonEmptyLines(result.output)}줄 출력`;
+}
+
+function setRightPanel(renderer) {
+  const showCanvas = renderer === "canvas";
+  outputPanel.classList.toggle("is-hidden", showCanvas);
+  canvasPanel.classList.toggle("is-hidden", !showCanvas);
 }
 
 function renderCanvasFrames(frames) {
@@ -264,4 +274,6 @@ function countNonEmptyLines(text) {
 main().catch((error) => {
   statusText.textContent = "초기화 실패";
   output.textContent = String(error);
+  canvasStatus.textContent = "초기화 실패";
+  canvasInfo.textContent = String(error);
 });

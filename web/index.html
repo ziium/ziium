@@ -10,33 +10,61 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="backdrop backdrop-left"></div>
-    <div class="backdrop backdrop-right"></div>
-    <main class="page">
-      <section class="hero">
-        <p class="eyebrow">Browser Playground</p>
-        <h1>ziium</h1>
-        <p class="lede">
-          브라우저에서 바로 지음 코드를 실행해보고, 하노이탑을 텍스트와 캔버스로
-          함께 볼 수 있습니다.
-        </p>
-        <div class="hero-meta">
-          <span id="versionBadge" class="badge">loading...</span>
-          <span class="badge">Rust interpreter in WebAssembly</span>
-        </div>
-      </section>
+    <div class="halo halo-left"></div>
+    <div class="halo halo-right"></div>
 
-      <section class="demo-switch">
-        <button class="demo-chip is-active" data-demo="text-hanoi" type="button">
-          텍스트 하노이탑
-        </button>
-        <button class="demo-chip" data-demo="canvas-hanoi" type="button">
-          캔버스 하노이탑
-        </button>
-      </section>
+    <main class="page">
+      <header class="masthead">
+        <div class="masthead-copy">
+          <p class="eyebrow">Browser Playground</p>
+          <h1>
+            <span class="title-main">ziium</span>
+            <span class="title-sub">지음의 문장형 코드를 브라우저에서 바로 시험해보는 작업대</span>
+          </h1>
+          <p class="lede">
+            텍스트 출력만 보는 데모와, 지음 코드가 직접 <code>그림판</code>을
+            호출해 프레임을 만드는 캔버스 데모를 한 화면에서 비교합니다.
+          </p>
+
+          <div class="hero-meta">
+            <span id="versionBadge" class="meta-pill">loading...</span>
+            <span class="meta-pill">Rust interpreter in WebAssembly</span>
+            <span class="meta-pill">Canvas host binding</span>
+          </div>
+
+          <section class="demo-switch">
+            <button class="demo-chip is-active" data-demo="text-hanoi" type="button">
+              텍스트 하노이탑
+            </button>
+            <button class="demo-chip" data-demo="canvas-hanoi" type="button">
+              캔버스 하노이탑
+            </button>
+          </section>
+        </div>
+
+        <aside class="masthead-side">
+          <section class="side-card side-card-accent">
+            <p class="card-kicker">현재 데모의 관점</p>
+            <h2>출력만 볼지, 그림판을 직접 칠할지</h2>
+            <p>
+              텍스트 버전은 이동 로그를 보여주고, 캔버스 버전은 지음 프로그램이
+              만든 프레임을 그대로 재생합니다.
+            </p>
+          </section>
+
+          <section class="side-card">
+            <p class="card-kicker">문법 조각</p>
+            <ul class="syntax-list">
+              <li><code>"지음"으로 인사만들기</code></li>
+              <li><code>과일들에 "감" 추가</code></li>
+              <li><code>그림판에 { ... }으로 사각형채우기</code></li>
+            </ul>
+          </section>
+        </aside>
+      </header>
 
       <section class="workspace">
-        <div class="panel editor-panel">
+        <div class="panel panel-editor">
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Source</p>
@@ -48,27 +76,31 @@
           <textarea id="editor" spellcheck="false"></textarea>
         </div>
 
-        <div class="panel output-panel">
+        <div class="panel panel-output">
           <div class="panel-head">
             <div>
               <p class="panel-kicker">Output</p>
               <h2>실행 결과</h2>
             </div>
-            <p id="statusText" class="status-text">샘플을 선택하고 실행하세요.</p>
+            <p id="statusText" class="status-text">실행 버튼을 누르면 결과가 여기에 나옵니다.</p>
           </div>
           <pre id="output"></pre>
         </div>
-      </section>
 
-      <section id="canvasPanel" class="panel canvas-panel is-hidden">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Canvas</p>
-            <h2>하노이탑 시각화</h2>
+        <div id="canvasPanel" class="panel panel-canvas is-hidden">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Canvas</p>
+              <h2>지음이 만든 프레임</h2>
+            </div>
+            <p id="canvasStatus" class="status-text">캔버스 프레임을 기다리는 중입니다.</p>
           </div>
-          <p id="canvasStatus" class="status-text">움직임을 기다리는 중입니다.</p>
+
+          <div class="canvas-wrap">
+            <canvas id="hanoiCanvas" width="960" height="420"></canvas>
+          </div>
+          <pre id="canvasInfo" class="canvas-info">캔버스 프레임을 기다리는 중입니다.</pre>
         </div>
-        <canvas id="hanoiCanvas" width="960" height="420"></canvas>
       </section>
     </main>
 
