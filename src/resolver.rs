@@ -346,10 +346,18 @@ fn next_span(spans: &[Span], index: &mut usize) -> Option<Span> {
 }
 
 fn builtin_names() -> HashSet<String> {
-    ["길이", "추가", "문자열로", "정수로", "실수로"]
-        .into_iter()
-        .map(str::to_string)
-        .collect()
+    [
+        "길이",
+        "추가",
+        "마지막꺼내기",
+        "문자열로",
+        "정수로",
+        "실수로",
+        "그림판",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
 }
 
 fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {

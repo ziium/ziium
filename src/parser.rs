@@ -133,15 +133,9 @@ impl Parser {
     }
 
     fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
-        let arg = self.parse_expression(0)?;
+        let arg = self.parse_expression_without_transform(0)?;
+        self.match_kind(TokenKind::Direction);
         let selector = self.expect_ident_token("`에` 뒤 키워드 메시지 이름이 필요합니다.")?;
-
-        if selector.lexeme != "추가" {
-            return Err(ParseError::new(
-                "`에` 뒤 키워드 메시지로는 현재 `추가`만 지원합니다.",
-                Some(selector.span),
-            ));
-        }
 
         self.consume_optional_period();
         Ok(Stmt::KeywordMessage {
@@ -252,7 +246,22 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, min_precedence: u8) -> Result<Expr, ParseError> {
-        let mut left = self.parse_unary()?;
+        self.parse_expression_with_options(min_precedence, true)
+    }
+
+    fn parse_expression_without_transform(
+        &mut self,
+        min_precedence: u8,
+    ) -> Result<Expr, ParseError> {
+        self.parse_expression_with_options(min_precedence, false)
+    }
+
+    fn parse_expression_with_options(
+        &mut self,
+        min_precedence: u8,
+        allow_transform_call: bool,
+    ) -> Result<Expr, ParseError> {
+        let mut left = self.parse_unary(allow_transform_call)?;
 
         loop {
             let Some((op, precedence)) = self.current_binary_op() else {
@@ -267,7 +276,7 @@ impl Parser {
                 .advance()
                 .expect("current_binary_op should only be present when a token exists")
                 .span;
-            let right = self.parse_expression(precedence + 1)?;
+            let right = self.parse_expression_with_options(precedence + 1, allow_transform_call)?;
             left = Expr::Binary {
                 left: Box::new(left),
                 op,
@@ -279,9 +288,9 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_unary(&mut self) -> Result<Expr, ParseError> {
+    fn parse_unary(&mut self, allow_transform_call: bool) -> Result<Expr, ParseError> {
         if let Some(token) = self.match_token(TokenKind::Minus) {
-            let expr = self.parse_unary()?;
+            let expr = self.parse_unary(allow_transform_call)?;
             let expr = Expr::Unary {
                 op: UnaryOp::Negate,
                 expr: Box::new(expr),
@@ -291,7 +300,7 @@ impl Parser {
         }
 
         if let Some(token) = self.match_token(TokenKind::Not) {
-            let expr = self.parse_unary()?;
+            let expr = self.parse_unary(allow_transform_call)?;
             let expr = Expr::Unary {
                 op: UnaryOp::Not,
                 expr: Box::new(expr),
@@ -300,10 +309,10 @@ impl Parser {
             return Ok(expr);
         }
 
-        self.parse_postfix()
+        self.parse_postfix(allow_transform_call)
     }
 
-    fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
+    fn parse_postfix(&mut self, allow_transform_call: bool) -> Result<Expr, ParseError> {
         let mut expr = self.parse_primary()?;
 
         loop {
@@ -317,7 +326,10 @@ impl Parser {
                 continue;
             }
 
-            if self.at(TokenKind::Direction) && self.nth_kind(1) == Some(TokenKind::Ident) {
+            if allow_transform_call
+                && self.at(TokenKind::Direction)
+                && self.nth_kind(1) == Some(TokenKind::Ident)
+            {
                 let token = self
                     .advance()
                     .expect("direction token should exist when parsing transform call");

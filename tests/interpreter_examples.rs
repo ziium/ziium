@@ -133,6 +133,27 @@ fn runs_builtin_push_and_length_example() {
 }
 
 #[test]
+fn runs_pop_last_builtin_example() {
+    let source = r#"숫자들은 [1, 2, 3]이다
+마지막은 마지막꺼내기(숫자들)이다
+마지막을 출력한다
+숫자들의 길이를 출력한다"#;
+    assert_output(source, &["3", "2"]);
+}
+
+#[test]
+fn records_canvas_frames_from_keyword_messages() {
+    let source = r##"그림판에 { 배경색: "#f6efe2" }으로 지우기.
+그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: "#d94841" }으로 사각형채우기.
+그림판에 { 글: "지음", x: 160, y: 60, 색: "#3b2f2f", 크기: 24 }로 글자쓰기."##;
+    let result = run_source(source).expect("program should run");
+
+    assert!(result.output.is_empty());
+    assert_eq!(result.canvas_frames.len(), 1);
+    assert_eq!(result.canvas_frames[0].commands.len(), 3);
+}
+
+#[test]
 fn reports_redeclaration_error() {
     let source = r#"개수는 1이다
 개수는 2이다"#;

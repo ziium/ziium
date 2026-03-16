@@ -3,6 +3,7 @@ use crate::error::{RunError, RuntimeError};
 use crate::parser::{ParseMetadata, parse_source_with_metadata};
 use crate::resolver::ResolverSession;
 use crate::token::Span;
+use serde::Serialize;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -13,6 +14,7 @@ type EnvRef = Rc<RefCell<Environment>>;
 #[derive(Debug, Clone)]
 pub struct ExecutionResult {
     pub output: Vec<String>,
+    pub canvas_frames: Vec<CanvasFrame>,
 }
 
 #[derive(Debug)]
@@ -31,6 +33,7 @@ pub enum Value {
     List(Rc<RefCell<Vec<Value>>>),
     Record(Rc<RefCell<BTreeMap<String, Value>>>),
     Function(FunctionValue),
+    Host(HostValue),
 }
 
 #[derive(Debug, Clone)]
@@ -52,9 +55,42 @@ pub struct UserFunction {
 pub enum BuiltinFunction {
     Length,
     Push,
+    PopLast,
     ToString,
     ToInt,
     ToFloat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostValue {
+    Canvas,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct CanvasFrame {
+    pub commands: Vec<CanvasCommand>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(tag = "kind")]
+pub enum CanvasCommand {
+    Clear {
+        background: String,
+    },
+    FillRect {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: String,
+    },
+    FillText {
+        text: String,
+        x: f64,
+        y: f64,
+        color: String,
+        size: f64,
+    },
 }
 
 #[derive(Debug)]
@@ -62,6 +98,8 @@ struct Interpreter {
     globals: EnvRef,
     output: Vec<String>,
     runtime_spans: RuntimeSpanMap,
+    current_canvas_commands: Vec<CanvasCommand>,
+    canvas_frames: Vec<CanvasFrame>,
 }
 
 #[derive(Debug)]
@@ -147,16 +185,24 @@ impl Interpreter {
             globals,
             output: Vec::new(),
             runtime_spans: RuntimeSpanMap::default(),
+            current_canvas_commands: Vec::new(),
+            canvas_frames: Vec::new(),
         }
     }
 
     fn run_program(&mut self, program: &Program) -> Result<ExecutionResult, RuntimeError> {
         let output_start = self.output.len();
+        self.current_canvas_commands.clear();
+        self.canvas_frames.clear();
         let runtime_spans = self.runtime_spans.clone();
         match self.execute_block(&program.statements, self.globals.clone(), &runtime_spans)? {
-            ExecSignal::Continue => Ok(ExecutionResult {
-                output: self.output[output_start..].to_vec(),
-            }),
+            ExecSignal::Continue => {
+                self.finish_canvas_frame();
+                Ok(ExecutionResult {
+                    output: self.output[output_start..].to_vec(),
+                    canvas_frames: self.canvas_frames.clone(),
+                })
+            }
             ExecSignal::Return(_) => Err(RuntimeError::new(
                 "`돌려준다`는 함수 본문 안에서만 사용할 수 있습니다.",
             )),
@@ -540,6 +586,17 @@ impl Interpreter {
                     )),
                 }
             }
+            BuiltinFunction::PopLast => {
+                let [list] = expect_arity::<1>("마지막꺼내기", args)?;
+                match list {
+                    Value::List(items) => items.borrow_mut().pop().ok_or_else(|| {
+                        RuntimeError::new("빈 목록에서는 마지막 값을 꺼낼 수 없습니다.")
+                    }),
+                    _ => Err(RuntimeError::new(
+                        "`마지막꺼내기`는 목록에만 사용할 수 있습니다.",
+                    )),
+                }
+            }
             BuiltinFunction::ToString => {
                 let [value] = expect_arity::<1>("문자열로", args)?;
                 Ok(Value::String(value.render()))
@@ -646,21 +703,83 @@ impl Interpreter {
         selector: &str,
         arg: Value,
     ) -> Result<(), RuntimeError> {
-        match selector {
-            "추가" => match receiver {
-                Value::List(items) => {
-                    items.borrow_mut().push(arg);
-                    Ok(())
-                }
-                _ => Err(RuntimeError::new(
-                    "`추가` 메시지는 목록에만 보낼 수 있습니다.",
-                )),
-            },
+        match receiver {
+            Value::List(items) if selector == "추가" => {
+                items.borrow_mut().push(arg);
+                Ok(())
+            }
+            Value::Host(HostValue::Canvas) => self.execute_canvas_message(selector, arg),
+            _ if selector == "추가" => Err(RuntimeError::new(
+                "`추가` 메시지는 목록에만 보낼 수 있습니다.",
+            )),
             _ => Err(RuntimeError::new(format!(
                 "`{}` 키워드 메시지는 아직 지원하지 않습니다.",
                 selector
             ))),
         }
+    }
+
+    fn execute_canvas_message(&mut self, selector: &str, arg: Value) -> Result<(), RuntimeError> {
+        let record = expect_record(selector, arg)?;
+        match selector {
+            "지우기" => {
+                let background = expect_string_field(&record, &["배경색", "색"])?;
+                self.begin_canvas_frame();
+                self.current_canvas_commands
+                    .push(CanvasCommand::Clear { background });
+                Ok(())
+            }
+            "사각형채우기" => {
+                let x = expect_number_field(&record, "x")?;
+                let y = expect_number_field(&record, "y")?;
+                let width = expect_number_field(&record, "너비")?;
+                let height = expect_number_field(&record, "높이")?;
+                let color = expect_string_field(&record, &["색"])?;
+                self.current_canvas_commands.push(CanvasCommand::FillRect {
+                    x,
+                    y,
+                    width,
+                    height,
+                    color,
+                });
+                Ok(())
+            }
+            "글자쓰기" => {
+                let text = expect_string_field(&record, &["글"])?;
+                let x = expect_number_field(&record, "x")?;
+                let y = expect_number_field(&record, "y")?;
+                let color = expect_string_field(&record, &["색"])?;
+                let size = expect_number_field(&record, "크기")?;
+                self.current_canvas_commands.push(CanvasCommand::FillText {
+                    text,
+                    x,
+                    y,
+                    color,
+                    size,
+                });
+                Ok(())
+            }
+            _ => Err(RuntimeError::new(format!(
+                "`그림판`은 `{}` 동작을 아직 지원하지 않습니다.",
+                selector
+            ))),
+        }
+    }
+
+    fn begin_canvas_frame(&mut self) {
+        if !self.current_canvas_commands.is_empty() {
+            self.finish_canvas_frame();
+        }
+    }
+
+    fn finish_canvas_frame(&mut self) {
+        if self.current_canvas_commands.is_empty() {
+            return;
+        }
+
+        self.canvas_frames.push(CanvasFrame {
+            commands: std::mem::take(&mut self.current_canvas_commands),
+        });
     }
 }
 
@@ -708,6 +827,7 @@ impl Value {
             }
             Value::Function(FunctionValue::Builtin(function)) => function.to_string(),
             Value::Function(FunctionValue::User(_)) => "<함수>".to_string(),
+            Value::Host(HostValue::Canvas) => "<그림판>".to_string(),
         }
     }
 }
@@ -1069,6 +1189,7 @@ impl fmt::Display for BuiltinFunction {
         match self {
             BuiltinFunction::Length => write!(f, "<내장 함수 길이>"),
             BuiltinFunction::Push => write!(f, "<내장 함수 추가>"),
+            BuiltinFunction::PopLast => write!(f, "<내장 함수 마지막꺼내기>"),
             BuiltinFunction::ToString => write!(f, "<내장 함수 문자열로>"),
             BuiltinFunction::ToInt => write!(f, "<내장 함수 정수로>"),
             BuiltinFunction::ToFloat => write!(f, "<내장 함수 실수로>"),
@@ -1081,6 +1202,7 @@ impl BuiltinFunction {
         match self {
             BuiltinFunction::Length => "길이",
             BuiltinFunction::Push => "추가",
+            BuiltinFunction::PopLast => "마지막꺼내기",
             BuiltinFunction::ToString => "문자열로",
             BuiltinFunction::ToInt => "정수로",
             BuiltinFunction::ToFloat => "실수로",
@@ -1099,6 +1221,10 @@ fn install_builtins(env: &EnvRef) {
         Value::Function(FunctionValue::Builtin(BuiltinFunction::Push)),
     );
     env.values.insert(
+        "마지막꺼내기".into(),
+        Value::Function(FunctionValue::Builtin(BuiltinFunction::PopLast)),
+    );
+    env.values.insert(
         "문자열로".into(),
         Value::Function(FunctionValue::Builtin(BuiltinFunction::ToString)),
     );
@@ -1110,6 +1236,8 @@ fn install_builtins(env: &EnvRef) {
         "실수로".into(),
         Value::Function(FunctionValue::Builtin(BuiltinFunction::ToFloat)),
     );
+    env.values
+        .insert("그림판".into(), Value::Host(HostValue::Canvas));
 }
 
 fn lookup_value(env: &EnvRef, name: &str) -> Result<Value, RuntimeError> {
@@ -1190,6 +1318,7 @@ fn values_equal(left: &Value, right: &Value) -> bool {
         (Value::Bool(a), Value::Bool(b)) => a == b,
         (Value::String(a), Value::String(b)) => a == b,
         (Value::None, Value::None) => true,
+        (Value::Host(a), Value::Host(b)) => a == b,
         (Value::List(a), Value::List(b)) => {
             let a = a.borrow();
             let b = b.borrow();
@@ -1206,6 +1335,47 @@ fn values_equal(left: &Value, right: &Value) -> bool {
         }
         _ => false,
     }
+}
+
+fn expect_record(name: &str, value: Value) -> Result<BTreeMap<String, Value>, RuntimeError> {
+    match value {
+        Value::Record(map) => Ok(map.borrow().clone()),
+        _ => Err(RuntimeError::new(format!(
+            "`{name}` 인수는 레코드여야 합니다."
+        ))),
+    }
+}
+
+fn expect_number_field(record: &BTreeMap<String, Value>, key: &str) -> Result<f64, RuntimeError> {
+    match record.get(key) {
+        Some(Value::Int(value)) => Ok(*value as f64),
+        Some(Value::Float(value)) => Ok(*value),
+        Some(_) => Err(RuntimeError::new(format!(
+            "`{key}` 필드는 숫자여야 합니다."
+        ))),
+        None => Err(RuntimeError::new(format!("`{key}` 필드가 필요합니다."))),
+    }
+}
+
+fn expect_string_field(
+    record: &BTreeMap<String, Value>,
+    keys: &[&str],
+) -> Result<String, RuntimeError> {
+    for key in keys {
+        if let Some(value) = record.get(*key) {
+            return match value {
+                Value::String(value) => Ok(value.clone()),
+                _ => Err(RuntimeError::new(format!(
+                    "`{key}` 필드는 문자열이어야 합니다."
+                ))),
+            };
+        }
+    }
+
+    Err(RuntimeError::new(format!(
+        "`{}` 필드가 필요합니다.",
+        keys.join("` 또는 `")
+    )))
 }
 
 fn expect_arity<const N: usize>(name: &str, args: Vec<Value>) -> Result<[Value; N], RuntimeError> {

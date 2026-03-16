@@ -20,7 +20,7 @@ assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ] ;
 print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
 keyword_message_stmt
-                = expression, LOCATIVE, expression, PUSH_WORD, [ PERIOD ] ;
+                = expression, LOCATIVE, expression, [ DIRECTION ], IDENT, [ PERIOD ] ;
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
@@ -112,7 +112,6 @@ ADD_WORD        = IDENT("더하기") ;
 SUB_WORD        = IDENT("빼기") ;
 MUL_WORD        = IDENT("곱하기") ;
 DIV_WORD        = IDENT("나누기") ;
-PUSH_WORD       = IDENT("추가") ;
 
 (* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
    INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,

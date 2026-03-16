@@ -111,6 +111,27 @@ fn lexes_keyword_message_statement() {
 }
 
 #[test]
+fn lexes_keyword_message_statement_with_direction() {
+    assert_lex(
+        "그림판에 { 배경색: \"#f6efe2\" }으로 지우기.",
+        &[
+            "IDENT(\"그림판\")",
+            "Locative(\"에\")",
+            "LBrace(\"{\")",
+            "IDENT(\"배경색\")",
+            "Colon(\":\")",
+            "STRING(\"#f6efe2\")",
+            "RBrace(\"}\")",
+            "Direction(\"으로\")",
+            "IDENT(\"지우기\")",
+            "Period(\".\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
 fn lexes_transform_call_expression() {
     assert_lex(
         "\"지음\"으로 인사만들기",

@@ -91,6 +91,44 @@ fn parses_keyword_message_statement() {
 }
 
 #[test]
+fn parses_keyword_message_with_record_and_direction() {
+    let program = parse_source(
+        "그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: \"#d94841\" }으로 사각형채우기.",
+    )
+    .expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::KeywordMessage {
+            receiver: Expr::Name("그림판".into()),
+            selector: "사각형채우기".into(),
+            arg: Expr::Record(vec![
+                RecordEntry {
+                    key: "x".into(),
+                    value: Expr::Int("120".into()),
+                },
+                RecordEntry {
+                    key: "y".into(),
+                    value: Expr::Int("80".into()),
+                },
+                RecordEntry {
+                    key: "너비".into(),
+                    value: Expr::Int("180".into()),
+                },
+                RecordEntry {
+                    key: "높이".into(),
+                    value: Expr::Int("40".into()),
+                },
+                RecordEntry {
+                    key: "색".into(),
+                    value: Expr::String("#d94841".into()),
+                },
+            ]),
+        }]
+    );
+}
+
+#[test]
 fn parses_transform_call_in_binding() {
     let program = parse_source("문장은 \"지음\"으로 인사만들기이다").expect("parse should succeed");
     assert_eq!(
