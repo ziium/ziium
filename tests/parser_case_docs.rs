@@ -4,8 +4,9 @@ use std::path::Path;
 #[test]
 fn parser_case_document_contains_expected_seed_cases() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("docs")
-        .join("PARSER_TEST_CASES.md");
+        .join("tests")
+        .join("fixtures")
+        .join("parser_cases.md");
     let doc = fs::read_to_string(path).expect("parser case document should exist");
 
     let success_cases = doc.matches("### P").count();

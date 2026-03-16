@@ -1,6 +1,6 @@
 # Parser Test Cases
 
-이 문서는 v0.1 parser golden/snapshot 테스트 입력 세트 초안이다. 각 케이스는 입력과 핵심 assert를 포함한다. AST 표기는 `SEMANTICS.md`의 노드 이름을 따른다.
+이 문서는 v0.1 parser golden/snapshot 테스트 입력 세트 초안이다. 각 케이스는 입력과 핵심 assert를 포함한다. AST 표기는 `docs/LANGUAGE.md`의 실행 의미와 구현 구조를 따른다.
 
 ## 사용 원칙
 

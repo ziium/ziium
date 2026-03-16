@@ -19,10 +19,10 @@
 
 ## 문법을 바꿀 때
 
-- 표면 문법이 바뀌면 `docs/LANGUAGE_SPEC.md`, `docs/GRAMMAR.ebnf`, `docs/SEMANTICS.md`를 함께 갱신한다.
-- 토큰화나 조사 분리가 바뀌면 `docs/TOKENS.md`를 함께 갱신한다.
+- 표면 문법이나 실행 의미가 바뀌면 `docs/LANGUAGE.md`와 `docs/GRAMMAR.ebnf`를 함께 갱신한다.
 - 중요한 설계 판단이 생기면 `docs/DECISIONS.md`에 기록한다.
-- 메시지 문법 관련 규칙은 `docs/MESSAGE_MODEL.md`와 `docs/MESSAGE_BOUNDARIES.md`를 기준으로 다룬다.
+- 구현 구조나 우선순위가 바뀌면 `docs/IMPLEMENTATION.md`를 함께 갱신한다.
+- 메시지 문법 관련 규칙은 `docs/LANGUAGE.md`의 메시지 섹션을 기준으로 다룬다.
 
 ## 현재 메시지 문법 경계
 
@@ -49,7 +49,7 @@
 
 - 코드 변경 후 기본 검증은 `cargo test`다.
 - 문법 추가나 진단 변경에는 회귀 테스트를 함께 추가한다.
-- parser 동작을 넓히면 `tests/parser_examples.rs`와 필요 시 문서 기반 테스트를 함께 갱신한다.
+- parser 동작을 넓히면 `tests/parser_examples.rs`와 필요 시 `tests/fixtures/parser_cases.md`를 함께 갱신한다.
 - 인터프리터 동작을 넓히면 `tests/interpreter_examples.rs`를 함께 갱신한다.
 
 ## 변경 설명에 포함할 것

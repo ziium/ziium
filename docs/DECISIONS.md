@@ -150,7 +150,7 @@ v0.2 이후 자연스러운 한국어 문법 확장은 ad hoc sugar를 늘리는
 
 - unary noun message, binary word message, keyword verb message를 별도 연구 대상으로 둔다.
 - v0.2 문서에서는 `Send` 중심 AST와 dispatch 모델을 검토한다.
-- `MESSAGE_MODEL.md`를 관련 설계 문서로 유지한다.
+- 메시지 문법 연구와 현재 규칙은 `LANGUAGE.md`에 함께 반영한다.
 
 ## 2026-03-16 - 현재 메시지 집합은 폐쇄된 built-in 집합으로 해석
 
@@ -172,4 +172,4 @@ v0.2 이후 자연스러운 한국어 문법 확장은 ad hoc sugar를 늘리는
 - `더하기`는 infix 위치에서만 built-in word operator다.
 - `추가`는 `에 <표현식> 추가`와 `추가(...)`에서만 특별 취급한다.
 - `A의 길이`는 record key lookup을 먼저 시도한 뒤, 목록/문자열에서만 built-in noun message로 해석한다.
-- 구체 규칙은 `MESSAGE_BOUNDARIES.md`를 따른다.
+- 구체 규칙은 `LANGUAGE.md`의 메시지 경계 섹션을 따른다.
