@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>ziium playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-left"></div>
+    <div class="backdrop backdrop-right"></div>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Browser Playground</p>
+        <h1>ziium</h1>
+        <p class="lede">
+          브라우저에서 바로 지음 코드를 실행해보고, 하노이탑을 텍스트와 캔버스로
+          함께 볼 수 있습니다.
+        </p>
+        <div class="hero-meta">
+          <span id="versionBadge" class="badge">loading...</span>
+          <span class="badge">Rust interpreter in WebAssembly</span>
+        </div>
+      </section>
+
+      <section class="demo-switch">
+        <button class="demo-chip is-active" data-demo="text-hanoi" type="button">
+          텍스트 하노이탑
+        </button>
+        <button class="demo-chip" data-demo="canvas-hanoi" type="button">
+          캔버스 하노이탑
+        </button>
+      </section>
+
+      <section class="workspace">
+        <div class="panel editor-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Source</p>
+              <h2 id="demoTitle">텍스트 하노이탑</h2>
+            </div>
+            <button id="runButton" class="run-button" type="button">실행</button>
+          </div>
+          <p id="demoSummary" class="panel-summary"></p>
+          <textarea id="editor" spellcheck="false"></textarea>
+        </div>
+
+        <div class="panel output-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Output</p>
+              <h2>실행 결과</h2>
+            </div>
+            <p id="statusText" class="status-text">샘플을 선택하고 실행하세요.</p>
+          </div>
+          <pre id="output"></pre>
+        </div>
+      </section>
+
+      <section id="canvasPanel" class="panel canvas-panel is-hidden">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Canvas</p>
+            <h2>하노이탑 시각화</h2>
+          </div>
+          <p id="canvasStatus" class="status-text">움직임을 기다리는 중입니다.</p>
+        </div>
+        <canvas id="hanoiCanvas" width="960" height="420"></canvas>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

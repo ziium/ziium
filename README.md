@@ -134,6 +134,24 @@ cargo run -- repl
 cargo test
 ```
 
+## 브라우저 데모
+
+`web/` 아래에 브라우저용 playground가 있다. 현재는 두 가지 하노이탑 데모를 포함한다.
+
+- 텍스트 하노이탑: 이동 경로를 출력으로 바로 본다.
+- 캔버스 하노이탑: 지음 코드가 출력한 이동 경로를 캔버스로 애니메이션한다.
+
+로컬에서 열려면:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install wasm-pack
+wasm-pack build --target web --out-dir web/pkg
+python3 -m http.server 8000 --directory web
+```
+
+그 다음 `http://localhost:8000`을 열면 된다. 자세한 내용은 [web/README.md](./web/README.md)에 있다.
+
 ## 다음 단계
 
 1. `docs/LANGUAGE.md`의 메시지 섹션을 기준으로 `Send` 중심 AST/HIR로 통합할지 결정한다.

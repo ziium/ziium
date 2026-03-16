@@ -6,6 +6,8 @@ pub mod normalizer;
 pub mod parser;
 pub mod resolver;
 pub mod token;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 pub use ast::{BinaryOp, Expr, Program, RecordEntry, Stmt, UnaryOp};
 pub use error::{FrontendError, LexError, ParseError, ResolveError, RunError, RuntimeError};
