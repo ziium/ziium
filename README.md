@@ -95,7 +95,7 @@
 - [DECISIONS.md](./docs/DECISIONS.md): 주요 설계 결정 기록
 - [TEST_PLAN.md](./docs/TEST_PLAN.md): 테스트 전략
 - [ERRORS.md](./docs/ERRORS.md): 오류 메시지 원칙
-- [AI_CONTEXT.md](./docs/AI_CONTEXT.md): AI 협업 지침
+- [AGENTS.md](./AGENTS.md): AI 에이전트용 작업 규칙
 - [CONTRIBUTING.md](./docs/CONTRIBUTING.md): 기여 가이드
 - [samples/README.md](./samples/README.md): 바로 실행할 수 있는 샘플 프로그램 모음
 
