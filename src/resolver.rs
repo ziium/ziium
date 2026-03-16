@@ -169,6 +169,11 @@ impl Resolver {
                 }
                 Ok(())
             }
+            Expr::TransformCall { input, callee } => {
+                self.resolve_expr(input)?;
+                let span = self.metadata.next_name_expr_span();
+                self.resolve_name(callee, span)
+            }
             Expr::Index { base, index } => {
                 self.resolve_expr(base)?;
                 self.resolve_expr(index)

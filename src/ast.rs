@@ -64,6 +64,10 @@ pub enum Expr {
         callee: Box<Expr>,
         args: Vec<Expr>,
     },
+    TransformCall {
+        input: Box<Expr>,
+        callee: String,
+    },
     Index {
         base: Box<Expr>,
         index: Box<Expr>,

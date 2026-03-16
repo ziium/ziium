@@ -40,7 +40,7 @@ fn runs_if_else_example() {
 fn runs_while_loop_example() {
     let source = r#"숫자들은 [3, 5, 8]이다
 인덱스는 0이다
-인덱스 < 길이(숫자들)인 동안
+인덱스 < 숫자들의 길이인 동안
   숫자들[인덱스]을 출력한다
   인덱스를 인덱스 + 1로 바꾼다"#;
     assert_output(source, &["3", "5", "8"]);
@@ -70,6 +70,25 @@ fn runs_keyword_message_example() {
 과일들의 길이를 출력한다
 과일들[2]을 출력한다"#;
     assert_output(source, &["3", "감"]);
+}
+
+#[test]
+fn runs_transform_call_example() {
+    let source = r#"인사만들기 함수는 이름을 받아
+  "안녕, " + 이름 + "!"을 돌려준다
+
+문장은 "지음"으로 인사만들기이다
+문장을 출력한다"#;
+    assert_output(source, &["안녕, 지음!"]);
+}
+
+#[test]
+fn runs_square_property_example() {
+    let source = r#"결과는 5의 제곱이다
+결과를 출력한다
+실수결과는 1.5의 제곱이다
+실수결과를 출력한다"#;
+    assert_output(source, &["25", "2.25"]);
 }
 
 #[test]

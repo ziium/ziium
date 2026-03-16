@@ -116,7 +116,7 @@ impl Parser {
                         "`을` 또는 `를` 뒤에는 `출력한다` 또는 `돌려준다`가 와야 합니다.",
                     ));
                 }
-            } else if matches!(expr, Expr::Call { .. }) {
+            } else if matches!(expr, Expr::Call { .. } | Expr::TransformCall { .. }) {
                 let stmt = Stmt::Expr(expr);
                 self.consume_optional_period();
                 stmt
@@ -312,6 +312,21 @@ impl Parser {
                 expr = Expr::Call {
                     callee: Box::new(expr),
                     args,
+                };
+                self.metadata.expr_spans.push(token.span);
+                continue;
+            }
+
+            if self.at(TokenKind::Direction) && self.nth_kind(1) == Some(TokenKind::Ident) {
+                let token = self
+                    .advance()
+                    .expect("direction token should exist when parsing transform call");
+                let callee =
+                    self.expect_ident_token("`로` 또는 `으로` 뒤에는 함수 이름이 필요합니다.")?;
+                self.metadata.name_expr_spans.push(callee.span.clone());
+                expr = Expr::TransformCall {
+                    input: Box::new(expr),
+                    callee: callee.lexeme,
                 };
                 self.metadata.expr_spans.push(token.span);
                 continue;

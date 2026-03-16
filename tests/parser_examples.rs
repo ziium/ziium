@@ -91,6 +91,21 @@ fn parses_keyword_message_statement() {
 }
 
 #[test]
+fn parses_transform_call_in_binding() {
+    let program = parse_source("문장은 \"지음\"으로 인사만들기이다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "문장".into(),
+            value: Expr::TransformCall {
+                input: Box::new(Expr::String("지음".into())),
+                callee: "인사만들기".into(),
+            },
+        }]
+    );
+}
+
+#[test]
 fn parses_property_print_statement() {
     let program = parse_source("사용자의 주소의 도시를 출력한다").expect("parse should succeed");
 
@@ -196,7 +211,7 @@ fn parses_if_else_block() {
 #[test]
 fn parses_while_block_with_index_and_assignment() {
     let source = r#"인덱스는 0이다
-인덱스 < 길이(숫자들)인 동안
+인덱스 < 숫자들의 길이인 동안
   숫자들[인덱스]을 출력한다
   인덱스를 인덱스 + 1로 바꾼다"#;
     let program = parse_source(source).expect("parse should succeed");
@@ -210,9 +225,9 @@ fn parses_while_block_with_index_and_assignment() {
             condition: Expr::Binary {
                 left: Box::new(Expr::Name("인덱스".into())),
                 op: BinaryOp::Less,
-                right: Box::new(Expr::Call {
-                    callee: Box::new(Expr::Name("길이".into())),
-                    args: vec![Expr::Name("숫자들".into())],
+                right: Box::new(Expr::Property {
+                    base: Box::new(Expr::Name("숫자들".into())),
+                    name: "길이".into(),
                 }),
             },
             body: vec![

@@ -21,7 +21,7 @@ print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
 keyword_message_stmt
                 = expression, LOCATIVE, expression, PUSH_WORD, [ PERIOD ] ;
-call_stmt       = call_expr, [ PERIOD ] ;
+call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
                   newline, INDENT, block, DEDENT,
@@ -52,13 +52,14 @@ additive        = multiplicative, { ( PLUS | MINUS | ADD_WORD | SUB_WORD ), mult
 multiplicative  = unary, { ( STAR | SLASH | PERCENT | MUL_WORD | DIV_WORD ), unary } ;
 unary           = { ( MINUS | NOT ) }, postfix ;
 
-postfix         = primary, { call_suffix | index_suffix | property_suffix } ;
-call_expr       = primary,
+postfix         = primary, { call_suffix | transform_suffix | index_suffix | property_suffix } ;
+call_like_expr  = primary,
                   { index_suffix | property_suffix },
-                  call_suffix,
-                  { call_suffix | index_suffix | property_suffix } ;
+                  ( call_suffix | transform_suffix ),
+                  { call_suffix | transform_suffix | index_suffix | property_suffix } ;
 
 call_suffix     = LPAREN, [ arg_list ], RPAREN ;
+transform_suffix = DIRECTION, IDENT ;
 index_suffix    = LBRACKET, expression, RBRACKET ;
 property_suffix = GEN, IDENT ;
 

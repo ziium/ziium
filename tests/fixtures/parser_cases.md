@@ -99,6 +99,17 @@
 - `BindStmt`
 - 우변이 `CallExpr(NameExpr("더하기"), [3, 5])`
 
+### P08A. unary transform 호출 바인딩
+
+```txt
+문장은 "지음"으로 인사만들기이다
+```
+
+기대:
+
+- `BindStmt`
+- 우변이 `TransformCallExpr(StringExpr("지음"), "인사만들기")`
+
 ### P09. 인덱싱 출력
 
 ```txt
@@ -197,6 +208,17 @@
 
 - `BindStmt`
 - 우변이 `BinaryExpr(NameExpr("나이"), ">=", LiteralExpr(20))`
+
+### P17A. built-in noun message
+
+```txt
+결과는 5의 제곱이다
+```
+
+기대:
+
+- `BindStmt`
+- 우변이 `PropertyExpr(LiteralExpr(5), "제곱")`
 
 ### P18. 논리 연산 우선순위
 

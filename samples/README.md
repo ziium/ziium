@@ -19,3 +19,6 @@ cargo run -- samples/00_hello_everyone.zm
 - `06_record_profile.zm`: 레코드와 `의` 속성 접근
 - `07_nested_properties.zm`: 중첩 레코드 접근
 - `08_message_syntax.zm`: 단어 연산과 키워드 메시지
+- `09_call_frames.zm`: `으로` 호출과 `의 제곱`
+- `10_hanoi.zm`: 재귀 함수와 더 긴 실행 흐름
+- `11_hanoi_ziium_style.zm`: `의`, `으로`, 단어 연산을 섞은 더 문장형 예제

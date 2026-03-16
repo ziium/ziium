@@ -111,6 +111,20 @@ fn lexes_keyword_message_statement() {
 }
 
 #[test]
+fn lexes_transform_call_expression() {
+    assert_lex(
+        "\"지음\"으로 인사만들기",
+        &[
+            "STRING(\"지음\")",
+            "Direction(\"으로\")",
+            "IDENT(\"인사만들기\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
 fn lexes_single_syllable_keyword_message_receiver_after_normalization() {
     assert_lex(
         "합에 3 추가",

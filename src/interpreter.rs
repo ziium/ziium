@@ -390,6 +390,15 @@ impl Interpreter {
                 self.call_value(callee, arg_values, expr_span.clone())
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
+            Expr::TransformCall { input, callee } => {
+                let input = self
+                    .eval_expr(input, env.clone(), spans)
+                    .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
+                let callee = lookup_value(&env, callee)
+                    .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
+                self.call_value(callee, vec![input], expr_span.clone())
+                    .map_err(|err| err.with_fallback_span(expr_span))
+            }
             Expr::Index { base, index } => {
                 let base = self
                     .eval_expr(base, env.clone(), spans)
@@ -610,6 +619,20 @@ impl Interpreter {
                     name
                 ))),
             },
+            Value::Int(value) => match name {
+                "제곱" => Ok(Value::Int(value * value)),
+                _ => Err(RuntimeError::new(format!(
+                    "정수에는 `{}` 속성이 없습니다.",
+                    name
+                ))),
+            },
+            Value::Float(value) => match name {
+                "제곱" => Ok(Value::Float(value * value)),
+                _ => Err(RuntimeError::new(format!(
+                    "실수에는 `{}` 속성이 없습니다.",
+                    name
+                ))),
+            },
             _ => Err(RuntimeError::new(format!(
                 "이 값에는 `{}` 속성이 없습니다.",
                 name
@@ -792,6 +815,7 @@ impl RuntimeSpanMap {
                     self.collect_expr(arg, cursor);
                 }
             }
+            Expr::TransformCall { input, .. } => self.collect_expr(input, cursor),
             Expr::Index { base, index } => {
                 self.collect_expr(base, cursor);
                 self.collect_expr(index, cursor);
@@ -972,6 +996,16 @@ impl RuntimeSpanMap {
                     self.copy_expr_spans(original_arg, cloned_arg, source);
                 }
             }
+            (
+                Expr::TransformCall {
+                    input: original_input,
+                    ..
+                },
+                Expr::TransformCall {
+                    input: cloned_input,
+                    ..
+                },
+            ) => self.copy_expr_spans(original_input, cloned_input, source),
             (
                 Expr::Index {
                     base: original_base,
