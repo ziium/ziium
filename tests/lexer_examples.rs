@@ -96,6 +96,36 @@ fn lexes_function_header_with_function_topic() {
 }
 
 #[test]
+fn lexes_keyword_message_statement() {
+    assert_lex(
+        "과일들에 \"감\" 추가",
+        &[
+            "IDENT(\"과일들\")",
+            "Locative(\"에\")",
+            "STRING(\"감\")",
+            "IDENT(\"추가\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn lexes_single_syllable_keyword_message_receiver_after_normalization() {
+    assert_lex(
+        "합에 3 추가",
+        &[
+            "IDENT(\"합\")",
+            "Locative(\"에\")",
+            "INT(3)",
+            "IDENT(\"추가\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
 fn lexes_indented_if_block() {
     assert_lex(
         "참이면\n  \"성인\"을 출력한다\n\"끝\"을 출력한다",

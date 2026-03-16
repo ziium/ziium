@@ -108,6 +108,10 @@ impl Resolver {
                 self.resolve_expr(value)
             }
             Stmt::Print { value } | Stmt::Expr(value) => self.resolve_expr(value),
+            Stmt::KeywordMessage { receiver, arg, .. } => {
+                self.resolve_expr(receiver)?;
+                self.resolve_expr(arg)
+            }
             Stmt::Return { value } => {
                 let span = self.metadata.next_return_span();
                 if self.function_depth == 0 {
@@ -353,6 +357,7 @@ fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {
             }
             Stmt::Assign { .. }
             | Stmt::Print { .. }
+            | Stmt::KeywordMessage { .. }
             | Stmt::Return { .. }
             | Stmt::Expr(_)
             | Stmt::If { .. }

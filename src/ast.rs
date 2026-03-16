@@ -33,6 +33,11 @@ pub enum Stmt {
         params: Vec<String>,
         body: Vec<Stmt>,
     },
+    KeywordMessage {
+        receiver: Expr,
+        selector: String,
+        arg: Expr,
+    },
     Expr(Expr),
 }
 

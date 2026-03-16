@@ -57,23 +57,25 @@
 
 ## 문서 안내
 
-- [VISION.md](./VISION.md): 언어 철학과 설계 원칙
-- [PRD.md](./PRD.md): 제품 수준 목표와 범위
-- [LANGUAGE_SPEC.md](./LANGUAGE_SPEC.md): v0.1 공식 표면 문법 명세
-- [TOKENS.md](./TOKENS.md): lexer용 토큰 규격과 조사 정규화 규칙
-- [SEMANTICS.md](./SEMANTICS.md): AST, 스코프, 실행 의미
-- [SYNTAX_GUIDE.md](./SYNTAX_GUIDE.md): 예제 중심 문법 가이드
-- [GRAMMAR.ebnf](./GRAMMAR.ebnf): 파서 구현용 EBNF
-- [PARSER_TEST_CASES.md](./PARSER_TEST_CASES.md): parser golden/snapshot 테스트 입력 초안
-- [ARCHITECTURE.md](./ARCHITECTURE.md): 구현 구조 초안
-- [ROADMAP.md](./ROADMAP.md): 단계별 개발 계획
-- [TASKS.md](./TASKS.md): 바로 착수 가능한 작업 목록
-- [DECISIONS.md](./DECISIONS.md): 주요 설계 결정 기록
-- [TEST_PLAN.md](./TEST_PLAN.md): 테스트 전략
-- [ERRORS.md](./ERRORS.md): 오류 메시지 원칙
-- [AI_CONTEXT.md](./AI_CONTEXT.md): AI 협업 지침
-- [CONTRIBUTING.md](./CONTRIBUTING.md): 기여 가이드
-- [EXAMPLES.md](./EXAMPLES.md): 대표 예제 모음
+- [VISION.md](./docs/VISION.md): 언어 철학과 설계 원칙
+- [PRD.md](./docs/PRD.md): 제품 수준 목표와 범위
+- [LANGUAGE_SPEC.md](./docs/LANGUAGE_SPEC.md): v0.1 공식 표면 문법 명세
+- [TOKENS.md](./docs/TOKENS.md): lexer용 토큰 규격과 조사 정규화 규칙
+- [SEMANTICS.md](./docs/SEMANTICS.md): AST, 스코프, 실행 의미
+- [SYNTAX_GUIDE.md](./docs/SYNTAX_GUIDE.md): 예제 중심 문법 가이드
+- [GRAMMAR.ebnf](./docs/GRAMMAR.ebnf): 파서 구현용 EBNF
+- [MESSAGE_MODEL.md](./docs/MESSAGE_MODEL.md): 메시지 중심 문법 연구 초안
+- [MESSAGE_BOUNDARIES.md](./docs/MESSAGE_BOUNDARIES.md): 메시지 이름과 일반 식별자 충돌 규칙
+- [PARSER_TEST_CASES.md](./docs/PARSER_TEST_CASES.md): parser golden/snapshot 테스트 입력 초안
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md): 구현 구조 초안
+- [ROADMAP.md](./docs/ROADMAP.md): 단계별 개발 계획
+- [TASKS.md](./docs/TASKS.md): 바로 착수 가능한 작업 목록
+- [DECISIONS.md](./docs/DECISIONS.md): 주요 설계 결정 기록
+- [TEST_PLAN.md](./docs/TEST_PLAN.md): 테스트 전략
+- [ERRORS.md](./docs/ERRORS.md): 오류 메시지 원칙
+- [AI_CONTEXT.md](./docs/AI_CONTEXT.md): AI 협업 지침
+- [CONTRIBUTING.md](./docs/CONTRIBUTING.md): 기여 가이드
+- [EXAMPLES.md](./docs/EXAMPLES.md): 대표 예제 모음
 - [samples/README.md](./samples/README.md): 바로 실행할 수 있는 샘플 프로그램 모음
 
 ## 현재 상태
@@ -123,7 +125,7 @@ cargo test
 
 ## 다음 단계
 
-1. `TOKENS.md`, `LANGUAGE_SPEC.md`, `GRAMMAR.ebnf`를 기준으로 정규화 규칙을 더 고정한다.
-2. `name resolution` 계층을 추가해 모호한 조사 분리와 이름 오류를 더 엄격하게 다룬다.
-3. `PARSER_TEST_CASES.md`, `TEST_PLAN.md`를 기준으로 golden test와 snapshot test를 더 늘린다.
+1. `MESSAGE_MODEL.md`와 `MESSAGE_BOUNDARIES.md`를 기준으로 `Send` 중심 AST/HIR로 통합할지 결정한다.
+2. `더하기/빼기/곱하기/나누기`, `추가` 외 메시지 집합을 어디까지 열지 정한다.
+3. `TOKENS.md`, `LANGUAGE_SPEC.md`, `GRAMMAR.ebnf`를 기준으로 정규화 규칙을 더 고정한다.
 4. 인터프리터 위에 LLVM 또는 Cranelift 백엔드 초안을 올린다.

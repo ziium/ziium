@@ -18,3 +18,4 @@ cargo run -- samples/00_hello_everyone.zm
 - `05_list_and_length.zm`: 목록과 내장 함수
 - `06_record_profile.zm`: 레코드와 `의` 속성 접근
 - `07_nested_properties.zm`: 중첩 레코드 접근
+- `08_message_syntax.zm`: 단어 연산과 키워드 메시지

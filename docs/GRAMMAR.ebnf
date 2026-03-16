@@ -11,6 +11,7 @@ statement       = bind_stmt
                 | if_stmt
                 | while_stmt
                 | function_def
+                | keyword_message_stmt
                 | call_stmt
                 ;
 
@@ -18,6 +19,8 @@ bind_stmt       = IDENT, TOPIC, expression, COPULA, [ PERIOD ] ;
 assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ] ;
 print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
+keyword_message_stmt
+                = expression, LOCATIVE, expression, PUSH_WORD, [ PERIOD ] ;
 call_stmt       = call_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
@@ -45,8 +48,8 @@ logic_or        = logic_and, { OR, logic_and } ;
 logic_and       = equality, { AND, equality } ;
 equality        = comparison, { ( EQ | NE ), comparison } ;
 comparison      = additive, { ( LT | LE | GT | GE ), additive } ;
-additive        = multiplicative, { ( PLUS | MINUS ), multiplicative } ;
-multiplicative  = unary, { ( STAR | SLASH | PERCENT ), unary } ;
+additive        = multiplicative, { ( PLUS | MINUS | ADD_WORD | SUB_WORD ), multiplicative } ;
+multiplicative  = unary, { ( STAR | SLASH | PERCENT | MUL_WORD | DIV_WORD ), unary } ;
 unary           = { ( MINUS | NOT ) }, postfix ;
 
 postfix         = primary, { call_suffix | index_suffix | property_suffix } ;
@@ -81,6 +84,7 @@ newline         = NEWLINE ;
 TOPIC           = "은" | "는" ;
 OBJECT          = "을" | "를" ;
 GEN             = "의" ;
+LOCATIVE        = "에" ;
 DIRECTION       = "로" | "으로" ;
 PERIOD          = "." ;
 COPULA          = "이다" ;
@@ -103,6 +107,11 @@ NONE            = "없음" ;
 AND             = "그리고" ;
 OR              = "또는" ;
 NOT             = "아니다" ;
+ADD_WORD        = IDENT("더하기") ;
+SUB_WORD        = IDENT("빼기") ;
+MUL_WORD        = IDENT("곱하기") ;
+DIV_WORD        = IDENT("나누기") ;
+PUSH_WORD       = IDENT("추가") ;
 
 (* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
    INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,

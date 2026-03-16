@@ -49,20 +49,27 @@ fn split_attached_statement_head(
         return None;
     }
 
-    let (base, suffix_kind, suffix) = split_attached_object_suffix(&token.lexeme)?;
-    if suffix_kind != TokenKind::Object {
-        return None;
-    }
+    let (base, suffix_kind, suffix) = split_attached_statement_suffix(&token.lexeme)?;
 
-    match tokens.get(index + 1).map(|token| token.kind) {
-        Some(TokenKind::Print) | Some(TokenKind::Return) => Some((base, suffix_kind, suffix)),
-        _ if line_has_assignment_tail(tokens, index + 1) => Some((base, suffix_kind, suffix)),
+    match suffix_kind {
+        TokenKind::Object => match tokens.get(index + 1).map(|token| token.kind) {
+            Some(TokenKind::Print) | Some(TokenKind::Return) => Some((base, suffix_kind, suffix)),
+            _ if line_has_assignment_tail(tokens, index + 1) => Some((base, suffix_kind, suffix)),
+            _ => None,
+        },
+        TokenKind::Locative if line_has_keyword_message_tail(tokens, index + 1) => {
+            Some((base, suffix_kind, suffix))
+        }
         _ => None,
     }
 }
 
-fn split_attached_object_suffix(lexeme: &str) -> Option<(String, TokenKind, &'static str)> {
-    for (suffix, kind) in [("을", TokenKind::Object), ("를", TokenKind::Object)] {
+fn split_attached_statement_suffix(lexeme: &str) -> Option<(String, TokenKind, &'static str)> {
+    for (suffix, kind) in [
+        ("을", TokenKind::Object),
+        ("를", TokenKind::Object),
+        ("에", TokenKind::Locative),
+    ] {
         if let Some(base) = lexeme.strip_suffix(suffix) {
             if !base.is_empty() {
                 return Some((base.to_string(), kind, suffix));
@@ -98,4 +105,20 @@ fn line_has_assignment_tail(tokens: &[Token], mut index: usize) -> bool {
     }
 
     false
+}
+
+fn line_has_keyword_message_tail(tokens: &[Token], mut index: usize) -> bool {
+    let mut last_ident = None;
+
+    while let Some(token) = tokens.get(index) {
+        match token.kind {
+            TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => break,
+            TokenKind::Period => {}
+            TokenKind::Ident => last_ident = Some(token.lexeme.as_str()),
+            _ => {}
+        }
+        index += 1;
+    }
+
+    matches!(last_ident, Some("추가"))
 }

@@ -62,6 +62,35 @@ fn parses_single_syllable_assignment_statement() {
 }
 
 #[test]
+fn parses_binary_word_message_in_binding() {
+    let program = parse_source("합은 7 더하기 8이다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "합".into(),
+            value: Expr::Binary {
+                left: Box::new(Expr::Int("7".into())),
+                op: BinaryOp::Add,
+                right: Box::new(Expr::Int("8".into())),
+            },
+        }]
+    );
+}
+
+#[test]
+fn parses_keyword_message_statement() {
+    let program = parse_source("과일들에 \"감\" 추가.").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::KeywordMessage {
+            receiver: Expr::Name("과일들".into()),
+            selector: "추가".into(),
+            arg: Expr::String("감".into()),
+        }]
+    );
+}
+
+#[test]
 fn parses_property_print_statement() {
     let program = parse_source("사용자의 주소의 도시를 출력한다").expect("parse should succeed");
 

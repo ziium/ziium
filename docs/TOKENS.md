@@ -90,6 +90,7 @@
 - `SUBJECT` `이` 또는 `가`
 - `OBJECT` `을` 또는 `를`
 - `GEN` `의`
+- `LOCATIVE` `에`
 - `DIRECTION` `로` 또는 `으로`
 
 `SUBJECT`는 v0.1 parser에서 아직 핵심 문법으로 쓰지 않지만, lexer 단계에서는 예약해 둔다.
@@ -159,6 +160,7 @@ IDENT("이름"), TOPIC("은"), STRING("철수"), COPULA("이다"), [ PERIOD(".")
 - `을`
 - `를`
 - `의`
+- `에`
 - `로`
 - `으로`
 
@@ -265,6 +267,20 @@ IDENT("사람") GEN("의") IDENT("이름") OBJECT("을") PRINT("출력한다") N
 
 ```txt
 IDENT("길이") LPAREN IDENT("목록") RPAREN OBJECT("을") PRINT("출력한다") NEWLINE EOF
+```
+
+### T04A
+
+입력:
+
+```txt
+과일들에 "감" 추가
+```
+
+토큰:
+
+```txt
+IDENT("과일들") LOCATIVE("에") STRING("감") IDENT("추가") NEWLINE EOF
 ```
 
 ### T05

@@ -99,6 +99,8 @@ impl Parser {
                     condition: expr,
                     body,
                 }
+            } else if self.match_kind(TokenKind::Locative) {
+                self.parse_keyword_message(expr)?
             } else if self.match_kind(TokenKind::Object) {
                 if self.match_kind(TokenKind::Print) {
                     let stmt = Stmt::Print { value: expr };
@@ -119,7 +121,7 @@ impl Parser {
                 self.consume_optional_period();
                 stmt
             } else {
-                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 조건문, 반복문, 함수 정의 중 하나를 기대했습니다."));
+                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 조건문, 반복문, 함수 정의, 키워드 메시지 중 하나를 기대했습니다."));
             }
         };
 
@@ -128,6 +130,25 @@ impl Parser {
         }
 
         Ok(stmt)
+    }
+
+    fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
+        let arg = self.parse_expression(0)?;
+        let selector = self.expect_ident_token("`에` 뒤 키워드 메시지 이름이 필요합니다.")?;
+
+        if selector.lexeme != "추가" {
+            return Err(ParseError::new(
+                "`에` 뒤 키워드 메시지로는 현재 `추가`만 지원합니다.",
+                Some(selector.span),
+            ));
+        }
+
+        self.consume_optional_period();
+        Ok(Stmt::KeywordMessage {
+            receiver,
+            selector: selector.lexeme,
+            arg,
+        })
     }
 
     fn parse_bind(&mut self) -> Result<Stmt, ParseError> {
@@ -461,8 +482,8 @@ impl Parser {
     }
 
     fn current_binary_op(&self) -> Option<(BinaryOp, u8)> {
-        let kind = self.current_kind()?;
-        match kind {
+        let token = self.tokens.get(self.pos)?;
+        match token.kind {
             TokenKind::Or => Some((BinaryOp::Or, 1)),
             TokenKind::And => Some((BinaryOp::And, 2)),
             TokenKind::Eq => Some((BinaryOp::Equal, 3)),
@@ -473,9 +494,13 @@ impl Parser {
             TokenKind::Ge => Some((BinaryOp::GreaterEqual, 4)),
             TokenKind::Plus => Some((BinaryOp::Add, 5)),
             TokenKind::Minus => Some((BinaryOp::Subtract, 5)),
+            TokenKind::Ident if token.lexeme == "더하기" => Some((BinaryOp::Add, 5)),
+            TokenKind::Ident if token.lexeme == "빼기" => Some((BinaryOp::Subtract, 5)),
             TokenKind::Star => Some((BinaryOp::Multiply, 6)),
             TokenKind::Slash => Some((BinaryOp::Divide, 6)),
             TokenKind::Percent => Some((BinaryOp::Modulo, 6)),
+            TokenKind::Ident if token.lexeme == "곱하기" => Some((BinaryOp::Multiply, 6)),
+            TokenKind::Ident if token.lexeme == "나누기" => Some((BinaryOp::Divide, 6)),
             _ => None,
         }
     }

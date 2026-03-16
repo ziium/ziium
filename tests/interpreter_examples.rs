@@ -57,6 +57,22 @@ fn runs_function_example() {
 }
 
 #[test]
+fn runs_binary_word_message_example() {
+    let source = r#"합은 7 더하기 8이다
+합을 출력한다"#;
+    assert_output(source, &["15"]);
+}
+
+#[test]
+fn runs_keyword_message_example() {
+    let source = r#"과일들은 ["사과", "배"]이다
+과일들에 "감" 추가
+과일들의 길이를 출력한다
+과일들[2]을 출력한다"#;
+    assert_output(source, &["3", "감"]);
+}
+
+#[test]
 fn runs_no_arg_function_example() {
     let source = r#"시작 함수는 아무것도 받지 않아
   "시작합니다"를 출력한다
@@ -71,6 +87,21 @@ fn runs_record_property_example() {
 사람의 이름을 출력한다
 사람의 나이를 출력한다"#;
     assert_output(source, &["영희", "18"]);
+}
+
+#[test]
+fn runs_list_length_property_example() {
+    let source = r#"과일들은 ["사과", "배"]이다
+추가(과일들, "감")
+과일들의 길이를 출력한다"#;
+    assert_output(source, &["3"]);
+}
+
+#[test]
+fn runs_string_length_property_example() {
+    let source = r#"인사는 "안녕"이다
+인사의 길이를 출력한다"#;
+    assert_output(source, &["2"]);
 }
 
 #[test]

@@ -289,6 +289,21 @@ impl Interpreter {
                 env.borrow_mut().values.insert(name.clone(), function);
                 Ok(ExecSignal::Continue)
             }
+            Stmt::KeywordMessage {
+                receiver,
+                selector,
+                arg,
+            } => {
+                let receiver = self
+                    .eval_expr(receiver, env.clone(), spans)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                let arg = self
+                    .eval_expr(arg, env, spans)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                self.execute_keyword_message(receiver, selector, arg)
+                    .map_err(|err| err.with_fallback_span(stmt_span))?;
+                Ok(ExecSignal::Continue)
+            }
             Stmt::Expr(expr) => {
                 self.eval_expr(expr, env, spans)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
@@ -581,9 +596,47 @@ impl Interpreter {
                     RuntimeError::new(format!("이 값에는 `{}` 속성이 없습니다.", name))
                 })
             }
-            _ => Err(RuntimeError::new(
-                "`의` 속성 접근은 레코드에만 사용할 수 있습니다.",
-            )),
+            Value::List(items) => match name {
+                "길이" => Ok(Value::Int(items.borrow().len() as i64)),
+                _ => Err(RuntimeError::new(format!(
+                    "목록에는 `{}` 속성이 없습니다.",
+                    name
+                ))),
+            },
+            Value::String(text) => match name {
+                "길이" => Ok(Value::Int(text.chars().count() as i64)),
+                _ => Err(RuntimeError::new(format!(
+                    "문자열에는 `{}` 속성이 없습니다.",
+                    name
+                ))),
+            },
+            _ => Err(RuntimeError::new(format!(
+                "이 값에는 `{}` 속성이 없습니다.",
+                name
+            ))),
+        }
+    }
+
+    fn execute_keyword_message(
+        &mut self,
+        receiver: Value,
+        selector: &str,
+        arg: Value,
+    ) -> Result<(), RuntimeError> {
+        match selector {
+            "추가" => match receiver {
+                Value::List(items) => {
+                    items.borrow_mut().push(arg);
+                    Ok(())
+                }
+                _ => Err(RuntimeError::new(
+                    "`추가` 메시지는 목록에만 보낼 수 있습니다.",
+                )),
+            },
+            _ => Err(RuntimeError::new(format!(
+                "`{}` 키워드 메시지는 아직 지원하지 않습니다.",
+                selector
+            ))),
         }
     }
 }
@@ -673,6 +726,10 @@ impl RuntimeSpanMap {
             | Stmt::Print { value }
             | Stmt::Return { value }
             | Stmt::Expr(value) => self.collect_expr(value, cursor),
+            Stmt::KeywordMessage { receiver, arg, .. } => {
+                self.collect_expr(receiver, cursor);
+                self.collect_expr(arg, cursor);
+            }
             Stmt::If {
                 condition,
                 then_block,
@@ -787,6 +844,21 @@ impl RuntimeSpanMap {
             )
             | (Stmt::Expr(original_value), Stmt::Expr(cloned_value)) => {
                 self.copy_expr_spans(original_value, cloned_value, source)
+            }
+            (
+                Stmt::KeywordMessage {
+                    receiver: original_receiver,
+                    arg: original_arg,
+                    ..
+                },
+                Stmt::KeywordMessage {
+                    receiver: cloned_receiver,
+                    arg: cloned_arg,
+                    ..
+                },
+            ) => {
+                self.copy_expr_spans(original_receiver, cloned_receiver, source);
+                self.copy_expr_spans(original_arg, cloned_arg, source);
             }
             (
                 Stmt::If {

@@ -71,6 +71,7 @@ pub enum TokenKind {
     Subject,
     Object,
     Gen,
+    Locative,
     Direction,
 }
 

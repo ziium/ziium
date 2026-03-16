@@ -41,6 +41,10 @@
 
 - 비교 표현의 한국어형 확장
 - `목록의 길이` 같은 내장 속성 lowering
+- 메시지 중심 AST 및 dispatch 실험
+- unary noun message
+- built-in binary word message
+- built-in keyword verb message
 - `각` 기반 반복문
 - 간단한 타입 주석
 - REPL
