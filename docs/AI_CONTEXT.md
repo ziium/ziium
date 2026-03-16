@@ -33,7 +33,7 @@
 - 문법 변경 시 `LANGUAGE_SPEC.md`와 `GRAMMAR.ebnf`를 함께 수정한다.
 - 의미 변화가 있으면 `SEMANTICS.md`를 함께 수정한다.
 - 중요한 판단은 `DECISIONS.md`에 기록한다.
-- 예제 추가 시 `EXAMPLES.md`나 `SYNTAX_GUIDE.md`에 반영한다.
+- 예제 추가 시 `README.md`, `SYNTAX_GUIDE.md`, `samples/README.md` 중 적절한 곳에 반영한다.
 
 ## 구현 우선순위
 

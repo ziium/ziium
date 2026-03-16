@@ -29,7 +29,7 @@
 
 완료 조건:
 
-- `EXAMPLES.md`의 핵심 예제 대부분이 실행된다.
+- `README.md`와 `samples/`의 핵심 예제 대부분이 실행된다.
 - parser snapshot test가 최소 30개 있다.
 - 런타임 오류 메시지 예제가 문서와 대체로 일치한다.
 

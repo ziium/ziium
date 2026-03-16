@@ -72,7 +72,7 @@
 
 ### 5. 문서 예제 테스트
 
-`README.md`, `SYNTAX_GUIDE.md`, `EXAMPLES.md`의 코드 블록 중 실행 가능한 예제를 자동 검증하는 것이 이상적이다.
+`README.md`, `SYNTAX_GUIDE.md`의 코드 블록과 `samples/*.zm`을 자동 검증하는 것이 이상적이다.
 
 ## 최소 테스트 수 목표
 
