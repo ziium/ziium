@@ -41,6 +41,10 @@ pub enum Stmt {
         selector: String,
         arg: Expr,
     },
+    NamedCall {
+        callee: Expr,
+        named_args: Expr,
+    },
     Expr(Expr),
 }
 

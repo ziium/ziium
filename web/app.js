@@ -1,6 +1,14 @@
 import init, { run_source_web } from "./pkg/ziium.js";
 
 const demos = {
+  hello: {
+    title: "첫인사",
+    summary: "가장 짧은 시작 예제입니다. 값을 만들고 바로 출력합니다.",
+    renderer: "text",
+    source: `첫인사는 "안녕하세요. 지음입니다."이다.
+첫인사를 출력한다.
+`,
+  },
   "text-hanoi": {
     title: "텍스트 하노이탑",
     summary: "가장 단순한 재귀 하노이탑 예제입니다. 이동 경로를 텍스트로만 출력합니다.",
@@ -10,12 +18,12 @@ const demos = {
     시작 + " -> " + 목표를 출력한다.
     0.5초 쉬기.
   아니면
-    탑옮기기(원반수 - 1, 시작, 목표, 보조)
+    탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조: 목표, 목표: 보조 }로 호출한다.
     시작 + " -> " + 목표를 출력한다.
     0.5초 쉬기.
-    탑옮기기(원반수 - 1, 보조, 시작, 목표)
+    탑옮기기를 { 원반수: 원반수 빼기 1, 시작: 보조, 보조: 시작, 목표 }로 호출한다.
 
-탑옮기기(3, "A", "B", "C")
+탑옮기기를 { 원반수: 3, 시작: "A", 보조: "B", 목표: "C" }로 호출한다.
 `,
   },
   "canvas-hanoi": {
@@ -71,18 +79,18 @@ const demos = {
     목표탑에 원반 추가.
     장면그리기()
   아니면
-    탑옮기기(개수 - 1, 시작탑, 목표탑, 보조탑)
+    탑옮기기를 { 개수: 개수 빼기 1, 시작탑, 보조탑: 목표탑, 목표탑: 보조탑 }로 호출한다.
     원반은 시작탑에서 맨위 원반을 빼낸 것이다.
     목표탑에 원반 추가.
     장면그리기()
-    탑옮기기(개수 - 1, 보조탑, 시작탑, 목표탑)
+    탑옮기기를 { 개수: 개수 빼기 1, 시작탑: 보조탑, 보조탑: 시작탑, 목표탑 }로 호출한다.
 
 탑A는 [3, 2, 1]이다.
 탑B는 []이다.
 탑C는 []이다.
 
 장면그리기()
-탑옮기기(3, 탑A, 탑B, 탑C)
+탑옮기기를 { 개수: 3, 시작탑: 탑A, 보조탑: 탑B, 목표탑: 탑C }로 호출한다.
 `,
   },
 };
@@ -101,7 +109,7 @@ const runButton = document.querySelector("#runButton");
 const demoButtons = [...document.querySelectorAll("[data-demo]")];
 const ctx = canvas.getContext("2d");
 
-let currentDemoId = "text-hanoi";
+let currentDemoId = "hello";
 let animationTimer = null;
 let playbackGeneration = 0;
 

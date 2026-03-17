@@ -136,6 +136,38 @@ body {
   margin-top: 22px;
 }
 
+.masthead-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.masthead-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 10px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 251, 244, 0.78);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 12px 32px rgba(82, 57, 35, 0.08);
+}
+
+.masthead-link:hover {
+  border-color: rgba(185, 93, 22, 0.38);
+  transform: translateY(-1px);
+}
+
+.masthead-link-primary {
+  background: linear-gradient(135deg, #fff0d9, #ffdcb8);
+  border-color: rgba(185, 93, 22, 0.38);
+}
+
 .demo-chip {
   cursor: pointer;
   padding: 11px 16px;
@@ -182,21 +214,24 @@ body {
   line-height: 1.7;
 }
 
-.syntax-list {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  color: var(--muted);
-  line-height: 1.9;
+.syntax-showcase {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
 }
 
-.syntax-list code,
+.syntax-example,
 .lede code {
+  display: block;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
-  padding: 2px 6px;
+  padding: 10px 12px;
   color: var(--accent-strong);
   font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
-  font-size: 0.92em;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: keep-all;
 }
 
 .workspace {

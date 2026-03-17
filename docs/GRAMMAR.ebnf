@@ -13,6 +13,7 @@ statement       = bind_stmt
                 | while_stmt
                 | function_def
                 | keyword_message_stmt
+                | named_call_stmt
                 | call_stmt
                 ;
 
@@ -23,6 +24,7 @@ sleep_stmt      = expression, SECOND_UNIT, SLEEP, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
 keyword_message_stmt
                 = expression, LOCATIVE, expression, [ DIRECTION ], IDENT, [ PERIOD ] ;
+named_call_stmt = expression, OBJECT, expression, DIRECTION, CALL_VERB, [ PERIOD ] ;
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
@@ -80,7 +82,11 @@ primary         = IDENT
 
 list_literal    = LBRACKET, [ expression, { COMMA, expression } ], RBRACKET ;
 record_literal  = LBRACE, [ record_entry, { COMMA, record_entry } ], RBRACE ;
-record_entry    = ( IDENT | STRING ), COLON, expression ;
+record_entry    = named_record_entry | shorthand_record_entry ;
+named_record_entry
+                = ( IDENT | STRING ), COLON, expression ;
+shorthand_record_entry
+                = IDENT ;
 
 newline         = NEWLINE ;
 
@@ -121,6 +127,7 @@ SLEEP           = IDENT("쉬기") ;
 TOP_DISK        = IDENT("맨위"), IDENT("원반") ;
 POP_RESULT      = IDENT("빼낸"), RESULT_MARKER ;
 RESULT_MARKER   = "것이다" ;
+CALL_VERB       = IDENT("호출한다") ;
 
 (* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
    INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,

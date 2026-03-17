@@ -114,16 +114,14 @@ impl Parser {
                     self.consume_optional_period();
                     stmt
                 } else {
-                    return Err(self.error_here(
-                        "`을` 또는 `를` 뒤에는 `출력한다` 또는 `돌려준다`가 와야 합니다.",
-                    ));
+                    self.parse_named_call_statement(expr)?
                 }
             } else if matches!(expr, Expr::Call { .. } | Expr::TransformCall { .. }) {
                 let stmt = Stmt::Expr(expr);
                 self.consume_optional_period();
                 stmt
             } else {
-                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 쉬기, 조건문, 반복문, 함수 정의, 키워드 메시지 중 하나를 기대했습니다."));
+                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 쉬기, 조건문, 반복문, 함수 정의, 키워드 메시지, 호출문 중 하나를 기대했습니다."));
             }
         };
 
@@ -132,6 +130,20 @@ impl Parser {
         }
 
         Ok(stmt)
+    }
+
+    fn parse_named_call_statement(&mut self, callee: Expr) -> Result<Stmt, ParseError> {
+        let named_args = self.parse_expression_without_transform(0)?;
+        self.expect(
+            TokenKind::Direction,
+            "호출 인수 뒤에는 `로` 또는 `으로`가 와야 합니다.",
+        )?;
+        self.expect_ident_lexeme(
+            "호출한다",
+            "`로` 또는 `으로` 뒤에는 `호출한다`가 와야 합니다.",
+        )?;
+        self.consume_optional_period();
+        Ok(Stmt::NamedCall { callee, named_args })
     }
 
     fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
@@ -504,8 +516,18 @@ impl Parser {
                     }
                 };
 
-                self.expect(TokenKind::Colon, "레코드 키 뒤에는 `:`가 와야 합니다.")?;
-                let value = self.parse_expression(0)?;
+                let value = if self.match_kind(TokenKind::Colon) {
+                    self.parse_expression(0)?
+                } else if key_token.kind == TokenKind::Ident {
+                    self.metadata.name_expr_spans.push(key_token.span.clone());
+                    self.metadata.expr_spans.push(key_token.span.clone());
+                    Expr::Name(key.clone())
+                } else {
+                    return Err(ParseError::new(
+                        "문자열 레코드 키 뒤에는 `:`가 와야 합니다.",
+                        Some(key_token.span),
+                    ));
+                };
                 entries.push(RecordEntry { key, value });
 
                 if !self.match_kind(TokenKind::Comma) {
@@ -608,9 +630,27 @@ impl Parser {
     fn is_assign_start(&self) -> bool {
         self.nth_kind(0) == Some(TokenKind::Ident)
             && self.nth_kind(1) == Some(TokenKind::Object)
+            && !self.is_named_call_start()
             && self
                 .nth_kind(2)
                 .is_some_and(|kind| kind != TokenKind::Print && kind != TokenKind::Return)
+    }
+
+    fn is_named_call_start(&self) -> bool {
+        let mut index = 2;
+        while let Some(token) = self.tokens.get(self.pos + index) {
+            match token.kind {
+                TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
+                TokenKind::Direction => {
+                    let Some(next) = self.tokens.get(self.pos + index + 1) else {
+                        return false;
+                    };
+                    return next.kind == TokenKind::Ident && next.lexeme == "호출한다";
+                }
+                _ => index += 1,
+            }
+        }
+        false
     }
 
     fn skip_newlines(&mut self) {

@@ -385,6 +385,20 @@ impl Interpreter {
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Continue)
             }
+            Stmt::NamedCall {
+                callee,
+                named_args,
+                ..
+            } => {
+                let callee = self
+                    .eval_expr(callee, env.clone())
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                let named_args = self
+                    .eval_expr(named_args, env)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                self.call_named_value(callee, named_args, stmt_span)?;
+                Ok(ExecSignal::Continue)
+            }
             Stmt::Expr { expr, .. } => {
                 self.eval_expr(expr, env)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
@@ -588,6 +602,50 @@ impl Interpreter {
                     ExecSignal::Return(value) => Ok(value),
                 }
             }
+            _ => Err(RuntimeError::new("호출할 수 없는 값을 호출했습니다.")),
+        }
+    }
+
+    fn call_named_value(
+        &mut self,
+        callee: Value,
+        named_args: Value,
+        call_span: Option<Span>,
+    ) -> Result<Value, RuntimeError> {
+        match callee {
+            Value::Function(FunctionValue::User(function)) => {
+                let named_args = expect_record("호출한다", named_args)?;
+
+                for key in named_args.keys() {
+                    if !function.params.iter().any(|param| param == key) {
+                        return Err(RuntimeError::new(format!(
+                            "`{}` 함수에는 `{}` 인수가 없습니다.",
+                            function.name, key
+                        )));
+                    }
+                }
+
+                let mut ordered_args = Vec::with_capacity(function.params.len());
+                for param in &function.params {
+                    let value = named_args.get(param).cloned().ok_or_else(|| {
+                        RuntimeError::new(format!(
+                            "`{}` 함수 호출에 `{}` 인수가 필요합니다.",
+                            function.name, param
+                        ))
+                    })?;
+                    ordered_args.push(value);
+                }
+
+                self.call_value(
+                    Value::Function(FunctionValue::User(function)),
+                    ordered_args,
+                    call_span,
+                )
+            }
+            Value::Function(FunctionValue::Builtin(function)) => Err(RuntimeError::new(format!(
+                "`{}`에는 아직 이름 붙은 호출을 사용할 수 없습니다.",
+                function.name()
+            ))),
             _ => Err(RuntimeError::new("호출할 수 없는 값을 호출했습니다.")),
         }
     }

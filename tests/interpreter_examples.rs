@@ -103,6 +103,15 @@ fn runs_transform_call_example() {
 }
 
 #[test]
+fn runs_named_call_statement_example() {
+    let source = r#"탑옮기기 함수는 원반수, 시작, 보조, 목표를 받아
+  시작 + " -> " + 목표를 출력한다
+
+탑옮기기를 { 원반수: 1, 시작: "A", 보조: "B", 목표: "C" }로 호출한다"#;
+    assert_output(source, &["A -> C"]);
+}
+
+#[test]
 fn runs_square_property_example() {
     let source = r#"결과는 5의 제곱이다
 결과를 출력한다
@@ -123,6 +132,15 @@ fn runs_no_arg_function_example() {
 #[test]
 fn runs_record_property_example() {
     let source = r#"사람은 { 이름: "영희", 나이: 18 }이다
+사람의 이름을 출력한다
+사람의 나이를 출력한다"#;
+    assert_output(source, &["영희", "18"]);
+}
+
+#[test]
+fn runs_record_shorthand_example() {
+    let source = r#"이름은 "영희"이다
+사람은 { 이름, 나이: 18 }이다
 사람의 이름을 출력한다
 사람의 나이를 출력한다"#;
     assert_output(source, &["영희", "18"]);

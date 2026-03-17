@@ -110,6 +110,14 @@ impl Resolver {
                 ..
             }
             | Stmt::Expr { expr: value, .. } => self.resolve_expr(value),
+            Stmt::NamedCall {
+                callee,
+                named_args,
+                ..
+            } => {
+                self.resolve_expr(callee)?;
+                self.resolve_expr(named_args)
+            }
             Stmt::Send {
                 receiver, args, ..
             } => {
@@ -365,6 +373,7 @@ fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {
             | Stmt::Print { .. }
             | Stmt::Sleep { .. }
             | Stmt::Send { .. }
+            | Stmt::NamedCall { .. }
             | Stmt::Return { .. }
             | Stmt::Expr { .. }
             | Stmt::If { .. }

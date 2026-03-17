@@ -104,6 +104,42 @@ fn parses_keyword_message_statement() {
 }
 
 #[test]
+fn parses_named_call_statement() {
+    let program = parse_source("탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조, 목표 }로 호출한다.")
+        .expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::NamedCall {
+            callee: Expr::Name("탑옮기기".into()),
+            named_args: Expr::Record(vec![
+                RecordEntry {
+                    key: "원반수".into(),
+                    value: Expr::Binary {
+                        left: Box::new(Expr::Name("원반수".into())),
+                        op: BinaryOp::Subtract,
+                        right: Box::new(Expr::Int("1".into())),
+                        form: BinarySurface::Word,
+                    },
+                },
+                RecordEntry {
+                    key: "시작".into(),
+                    value: Expr::Name("시작".into()),
+                },
+                RecordEntry {
+                    key: "보조".into(),
+                    value: Expr::Name("보조".into()),
+                },
+                RecordEntry {
+                    key: "목표".into(),
+                    value: Expr::Name("목표".into()),
+                },
+            ]),
+        }]
+    );
+}
+
+#[test]
 fn parses_keyword_message_with_record_and_direction() {
     let program = parse_source(
         "그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: \"#d94841\" }으로 사각형채우기.",
@@ -209,6 +245,28 @@ fn parses_list_and_record_literals() {
                 RecordEntry {
                     key: "포트들".into(),
                     value: Expr::List(vec![Expr::Int("80".into()), Expr::Int("443".into())]),
+                },
+            ]),
+        }]
+    );
+}
+
+#[test]
+fn parses_record_literal_with_shorthand_entries() {
+    let program = parse_source("사람은 { 이름, 나이: 18 }이다").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "사람".into(),
+            value: Expr::Record(vec![
+                RecordEntry {
+                    key: "이름".into(),
+                    value: Expr::Name("이름".into()),
+                },
+                RecordEntry {
+                    key: "나이".into(),
+                    value: Expr::Int("18".into()),
                 },
             ]),
         }]

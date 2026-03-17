@@ -20,9 +20,30 @@
           <h1>
             <span class="title-main">ziium</span>
           </h1>
+          <div class="masthead-links">
+            <a
+              class="masthead-link masthead-link-primary"
+              href="https://github.com/ziium/ziium"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub 저장소
+            </a>
+            <a
+              class="masthead-link"
+              href="https://github.com/ziium/ziium/blob/main/README.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              README
+            </a>
+          </div>
 
           <section class="demo-switch">
-            <button class="demo-chip is-active" data-demo="text-hanoi" type="button">
+            <button class="demo-chip is-active" data-demo="hello" type="button">
+              첫인사
+            </button>
+            <button class="demo-chip" data-demo="text-hanoi" type="button">
               텍스트 하노이탑
             </button>
             <button class="demo-chip" data-demo="canvas-hanoi" type="button">
@@ -33,12 +54,12 @@
 
         <aside class="masthead-side">
           <section class="side-card">
-            <p class="card-kicker">문법 조각</p>
-            <ul class="syntax-list">
-              <li><code>"지음"으로 인사만들기</code></li>
-              <li><code>과일들에 "감" 추가</code></li>
-              <li><code>그림판에 { ... }으로 사각형채우기</code></li>
-            </ul>
+            <p class="card-kicker">한 줄 맛보기</p>
+            <div class="syntax-showcase">
+              <code class="syntax-example">"안녕하세요. 지음입니다."를 출력한다.</code>
+              <code class="syntax-example">원반은 시작탑에서 맨위 원반을 빼낸 것이다.</code>
+              <code class="syntax-example">그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: 빨강 }으로 사각형채우기.</code>
+            </div>
           </section>
         </aside>
       </header>

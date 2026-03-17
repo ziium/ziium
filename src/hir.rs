@@ -61,6 +61,11 @@ pub enum Stmt {
         args: Vec<Expr>,
         span: Option<Span>,
     },
+    NamedCall {
+        callee: Expr,
+        named_args: Expr,
+        span: Option<Span>,
+    },
     Expr {
         expr: Expr,
         span: Option<Span>,
@@ -193,6 +198,7 @@ impl Stmt {
             | Stmt::While { span, .. }
             | Stmt::FunctionDef { span, .. }
             | Stmt::Send { span, .. }
+            | Stmt::NamedCall { span, .. }
             | Stmt::Expr { span, .. } => span.as_ref(),
         }
     }
@@ -322,6 +328,15 @@ fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
                 receiver,
                 selector: SendSelector::Keyword(selector.clone()),
                 args: vec![arg],
+                span: cursor.next_statement_span(),
+            }
+        }
+        ast::Stmt::NamedCall { callee, named_args } => {
+            let callee = lower_expr(callee, cursor);
+            let named_args = lower_expr(named_args, cursor);
+            Stmt::NamedCall {
+                callee,
+                named_args,
                 span: cursor.next_statement_span(),
             }
         }
