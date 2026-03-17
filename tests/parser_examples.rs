@@ -178,6 +178,34 @@ fn parses_keyword_message_with_record_and_direction() {
 }
 
 #[test]
+fn parses_canvas_dot_message() {
+    let program = parse_source("그림판에 { x: 120, y: 80, 색: 빨강 }으로 점찍기.")
+        .expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::KeywordMessage {
+            receiver: Expr::Name("그림판".into()),
+            selector: "점찍기".into(),
+            arg: Expr::Record(vec![
+                RecordEntry {
+                    key: "x".into(),
+                    value: Expr::Int("120".into()),
+                },
+                RecordEntry {
+                    key: "y".into(),
+                    value: Expr::Int("80".into()),
+                },
+                RecordEntry {
+                    key: "색".into(),
+                    value: Expr::Name("빨강".into()),
+                },
+            ]),
+        }]
+    );
+}
+
+#[test]
 fn parses_transform_call_in_binding() {
     let program = parse_source("문장은 \"지음\"으로 인사만들기이다").expect("parse should succeed");
     assert_eq!(

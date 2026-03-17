@@ -190,8 +190,9 @@ fn runs_resultive_binding_example() {
 
 #[test]
 fn records_canvas_frames_from_keyword_messages() {
-    let source = r##"그림판에 { 배경색: "#f6efe2" }으로 지우기.
-그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: "#d94841" }으로 사각형채우기.
+    let source = r##"빨강은 "#d94841"이다.
+그림판에 { 배경색: "#f6efe2" }으로 지우기.
+그림판에 { x: 120, y: 80, 색: 빨강 }으로 점찍기.
 그림판에 { 글: "지음", x: 160, y: 60, 색: "#3b2f2f", 크기: 24 }로 글자쓰기."##;
     let result = run_source(source).expect("program should run");
 

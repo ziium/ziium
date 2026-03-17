@@ -37,7 +37,7 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 표면 AST는 여전히 `Call`, `TransformCall`, `Property`, `KeywordMessage`, `Resultive`처럼 surface syntax 중심으로 나뉜다. 그 다음 HIR lowering이 이를 `Send` 중심 표현으로 다시 정리한다.
 
 - unary message: `길이`, `제곱`
-- keyword message: `추가`, `지우기`, `사각형채우기`, `글자쓰기`
+- keyword message: `추가`, `지우기`, `점찍기`, `사각형채우기`, `글자쓰기`
 - resultive message: `맨위 원반을 빼낸`
 
 즉 현재 구현은 `surface AST + send-centered HIR`의 2단 구조다. parser는 한국어 문장형 표면을 보존하고, interpreter는 HIR의 selector 기반 메시지 모델만 실행한다.

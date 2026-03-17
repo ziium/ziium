@@ -96,6 +96,12 @@ pub enum CanvasCommand {
     Clear {
         background: String,
     },
+    Dot {
+        x: f64,
+        y: f64,
+        color: String,
+        size: f64,
+    },
     FillRect {
         x: f64,
         y: f64,
@@ -952,6 +958,9 @@ impl Interpreter {
             (_, KeywordMessage::CanvasFillText) => Err(RuntimeError::new(
                 "`글자쓰기` 메시지는 그림판에만 보낼 수 있습니다.",
             )),
+            (_, KeywordMessage::CanvasDot) => Err(RuntimeError::new(
+                "`점찍기` 메시지는 그림판에만 보낼 수 있습니다.",
+            )),
         }
     }
 
@@ -962,6 +971,7 @@ impl Interpreter {
     ) -> Result<(), RuntimeError> {
         let selector_name = match selector {
             KeywordMessage::CanvasClear => "지우기",
+            KeywordMessage::CanvasDot => "점찍기",
             KeywordMessage::CanvasFillRect => "사각형채우기",
             KeywordMessage::CanvasFillText => "글자쓰기",
             KeywordMessage::Push => "추가",
@@ -973,6 +983,19 @@ impl Interpreter {
                 self.begin_canvas_frame();
                 self.current_canvas_commands
                     .push(CanvasCommand::Clear { background });
+                Ok(())
+            }
+            KeywordMessage::CanvasDot => {
+                let x = expect_number_field(&record, "x")?;
+                let y = expect_number_field(&record, "y")?;
+                let color = expect_string_field(&record, &["색"])?;
+                let size = expect_number_field_or(record.get("크기"), 8.0, "크기")?;
+                self.current_canvas_commands.push(CanvasCommand::Dot {
+                    x,
+                    y,
+                    color,
+                    size,
+                });
                 Ok(())
             }
             KeywordMessage::CanvasFillRect => {
@@ -1249,6 +1272,21 @@ fn expect_number_field(record: &BTreeMap<String, Value>, key: &str) -> Result<f6
             "`{key}` 필드는 숫자여야 합니다."
         ))),
         None => Err(RuntimeError::new(format!("`{key}` 필드가 필요합니다."))),
+    }
+}
+
+fn expect_number_field_or(
+    value: Option<&Value>,
+    default: f64,
+    key: &str,
+) -> Result<f64, RuntimeError> {
+    match value {
+        Some(Value::Int(value)) => Ok(*value as f64),
+        Some(Value::Float(value)) => Ok(*value),
+        Some(_) => Err(RuntimeError::new(format!(
+            "`{key}` 필드는 숫자여야 합니다."
+        ))),
+        None => Ok(default),
     }
 }
 

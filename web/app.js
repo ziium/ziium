@@ -319,6 +319,13 @@ function drawCommand(command) {
       }
       return;
     }
+    case "Dot": {
+      ctx.fillStyle = command.color;
+      ctx.beginPath();
+      ctx.arc(command.x, command.y, command.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     case "FillText": {
       ctx.fillStyle = command.color;
       ctx.textAlign = "left";

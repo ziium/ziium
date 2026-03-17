@@ -10,6 +10,7 @@ pub(crate) enum KeywordMessage {
     CanvasClear,
     CanvasFillRect,
     CanvasFillText,
+    CanvasDot,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +32,7 @@ pub(crate) fn keyword_message_for_selector(selector: &str) -> Option<KeywordMess
         "지우기" => Some(KeywordMessage::CanvasClear),
         "사각형채우기" => Some(KeywordMessage::CanvasFillRect),
         "글자쓰기" => Some(KeywordMessage::CanvasFillText),
+        "점찍기" => Some(KeywordMessage::CanvasDot),
         _ => None,
     }
 }
