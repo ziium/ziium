@@ -16,6 +16,9 @@ pub enum Stmt {
     Print {
         value: Expr,
     },
+    Sleep {
+        duration_seconds: Expr,
+    },
     Return {
         value: Expr,
     },
@@ -59,6 +62,7 @@ pub enum Expr {
         left: Box<Expr>,
         op: BinaryOp,
         right: Box<Expr>,
+        form: BinarySurface,
     },
     Call {
         callee: Box<Expr>,
@@ -68,6 +72,11 @@ pub enum Expr {
         input: Box<Expr>,
         callee: String,
     },
+    Resultive {
+        receiver: Box<Expr>,
+        role: String,
+        verb: String,
+    },
     Index {
         base: Box<Expr>,
         index: Box<Expr>,
@@ -76,6 +85,12 @@ pub enum Expr {
         base: Box<Expr>,
         name: String,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinarySurface {
+    Symbol,
+    Word,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

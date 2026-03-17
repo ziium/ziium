@@ -1,11 +1,16 @@
-use crate::ast::{BinaryOp, Expr, Program, Stmt, UnaryOp};
+use crate::ast::{BinaryOp, UnaryOp};
 use crate::error::{RunError, RuntimeError};
-use crate::parser::{ParseMetadata, parse_source_with_metadata};
+use crate::hir::{self, Expr, Program, SendSelector, Stmt};
+use crate::message::{
+    KeywordMessage, ResultiveMessage, UnaryMessage, keyword_message_for_selector,
+    resultive_message_for, unary_message_for_property,
+};
+use crate::parser::parse_source_with_metadata;
 use crate::resolver::ResolverSession;
 use crate::token::Span;
 use serde::Serialize;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -15,6 +20,7 @@ type EnvRef = Rc<RefCell<Environment>>;
 pub struct ExecutionResult {
     pub output: Vec<String>,
     pub canvas_frames: Vec<CanvasFrame>,
+    pub events: Vec<ExecutionEvent>,
 }
 
 #[derive(Debug)]
@@ -48,7 +54,6 @@ pub struct UserFunction {
     pub params: Vec<String>,
     pub body: Rc<Vec<Stmt>>,
     env: EnvRef,
-    spans: RuntimeSpanMap,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +74,20 @@ pub enum HostValue {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct CanvasFrame {
     pub commands: Vec<CanvasCommand>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(tag = "kind")]
+pub enum ExecutionEvent {
+    Output {
+        text: String,
+    },
+    Sleep {
+        seconds: f64,
+    },
+    CanvasFrame {
+        frame: CanvasFrame,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -97,9 +116,9 @@ pub enum CanvasCommand {
 struct Interpreter {
     globals: EnvRef,
     output: Vec<String>,
-    runtime_spans: RuntimeSpanMap,
     current_canvas_commands: Vec<CanvasCommand>,
     canvas_frames: Vec<CanvasFrame>,
+    events: Vec<ExecutionEvent>,
 }
 
 #[derive(Debug)]
@@ -108,29 +127,20 @@ struct Environment {
     parent: Option<EnvRef>,
 }
 
-#[derive(Debug, Clone, Default)]
-struct RuntimeSpanMap {
-    stmt_spans: HashMap<usize, Span>,
-    expr_spans: HashMap<usize, Span>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct RuntimeSpanCursor {
-    statement_spans: Vec<Span>,
-    statement_index: usize,
-    expr_spans: Vec<Span>,
-    expr_index: usize,
-}
-
 #[derive(Debug)]
 enum ExecSignal {
     Continue,
     Return(Value),
 }
 
-pub fn interpret_program(program: &Program) -> Result<ExecutionResult, RuntimeError> {
+pub fn interpret_program(program: &crate::ast::Program) -> Result<ExecutionResult, RuntimeError> {
     let mut session = InterpreterSession::new();
     session.interpret_program(program)
+}
+
+pub fn interpret_hir_program(program: &Program) -> Result<ExecutionResult, RuntimeError> {
+    let mut session = InterpreterSession::new();
+    session.interpret_hir_program(program)
 }
 
 pub fn run_source(source: &str) -> Result<ExecutionResult, RunError> {
@@ -148,24 +158,31 @@ impl InterpreterSession {
 
     pub fn interpret_program(
         &mut self,
+        program: &crate::ast::Program,
+    ) -> Result<ExecutionResult, RuntimeError> {
+        let hir_program = hir::lower_program(program);
+        self.resolver
+            .resolve_hir_program(&hir_program)
+            .map_err(|err| RuntimeError::with_span(err.message.clone(), err.span.clone()))?;
+        self.interpreter.run_program(&hir_program)
+    }
+
+    pub fn interpret_hir_program(
+        &mut self,
         program: &Program,
     ) -> Result<ExecutionResult, RuntimeError> {
-        self.interpreter.runtime_spans = RuntimeSpanMap::default();
-        self.resolver
-            .resolve_program(program)
-            .map_err(|err| RuntimeError::with_span(err.message.clone(), err.span.clone()))?;
         self.interpreter.run_program(program)
     }
 
     pub fn run_source(&mut self, source: &str) -> Result<ExecutionResult, RunError> {
         let (program, metadata) = parse_source_with_metadata(source).map_err(RunError::from)?;
-        self.interpreter.runtime_spans = RuntimeSpanMap::from_program(&program, &metadata);
+        let hir_program = hir::lower_program_with_metadata(&program, Some(&metadata));
         self.resolver
-            .resolve_program_with_metadata(&program, &metadata)
+            .resolve_hir_program(&hir_program)
             .map_err(crate::error::FrontendError::from)
             .map_err(RunError::from)?;
         self.interpreter
-            .run_program(&program)
+            .run_program(&hir_program)
             .map_err(RunError::from)
     }
 }
@@ -184,9 +201,9 @@ impl Interpreter {
         Self {
             globals,
             output: Vec::new(),
-            runtime_spans: RuntimeSpanMap::default(),
             current_canvas_commands: Vec::new(),
             canvas_frames: Vec::new(),
+            events: Vec::new(),
         }
     }
 
@@ -194,13 +211,14 @@ impl Interpreter {
         let output_start = self.output.len();
         self.current_canvas_commands.clear();
         self.canvas_frames.clear();
-        let runtime_spans = self.runtime_spans.clone();
-        match self.execute_block(&program.statements, self.globals.clone(), &runtime_spans)? {
+        self.events.clear();
+        match self.execute_block(&program.statements, self.globals.clone())? {
             ExecSignal::Continue => {
                 self.finish_canvas_frame();
                 Ok(ExecutionResult {
                     output: self.output[output_start..].to_vec(),
                     canvas_frames: self.canvas_frames.clone(),
+                    events: self.events.clone(),
                 })
             }
             ExecSignal::Return(_) => Err(RuntimeError::new(
@@ -213,10 +231,9 @@ impl Interpreter {
         &mut self,
         statements: &[Stmt],
         env: EnvRef,
-        spans: &RuntimeSpanMap,
     ) -> Result<ExecSignal, RuntimeError> {
         for statement in statements {
-            match self.execute_stmt(statement, env.clone(), spans)? {
+            match self.execute_stmt(statement, env.clone())? {
                 ExecSignal::Continue => {}
                 signal @ ExecSignal::Return(_) => return Ok(signal),
             }
@@ -229,11 +246,10 @@ impl Interpreter {
         &mut self,
         stmt: &Stmt,
         env: EnvRef,
-        spans: &RuntimeSpanMap,
     ) -> Result<ExecSignal, RuntimeError> {
-        let stmt_span = spans.stmt_span(stmt);
+        let stmt_span = stmt.span().cloned();
         match stmt {
-            Stmt::Bind { name, value } => {
+            Stmt::Bind { name, value, .. } => {
                 if env.borrow().values.contains_key(name) {
                     return Err(RuntimeError::with_span(
                         format!("`{}`은(는) 현재 스코프에 이미 정의되어 있습니다.", name),
@@ -241,28 +257,42 @@ impl Interpreter {
                     ));
                 }
                 let value = self
-                    .eval_expr(value, env.clone(), spans)
+                    .eval_expr(value, env.clone())
                     .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
                 env.borrow_mut().values.insert(name.clone(), value);
                 Ok(ExecSignal::Continue)
             }
-            Stmt::Assign { name, value } => {
+            Stmt::Assign { name, value, .. } => {
                 let value = self
-                    .eval_expr(value, env.clone(), spans)
+                    .eval_expr(value, env.clone())
                     .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
                 assign_value(&env, name, value).map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Continue)
             }
-            Stmt::Print { value } => {
+            Stmt::Print { value, .. } => {
                 let value = self
-                    .eval_expr(value, env, spans)
+                    .eval_expr(value, env)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
-                self.output.push(value.render());
+                let rendered = value.render();
+                self.output.push(rendered.clone());
+                self.events.push(ExecutionEvent::Output { text: rendered });
                 Ok(ExecSignal::Continue)
             }
-            Stmt::Return { value } => {
+            Stmt::Sleep {
+                duration_seconds, ..
+            } => {
+                let duration_value = self
+                    .eval_expr(duration_seconds, env)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                let seconds = expect_sleep_seconds(duration_value)
+                    .map_err(|err| err.with_fallback_span(stmt_span))?;
+                self.finish_canvas_frame();
+                self.events.push(ExecutionEvent::Sleep { seconds });
+                Ok(ExecSignal::Continue)
+            }
+            Stmt::Return { value, .. } => {
                 let value = self
-                    .eval_expr(value, env, spans)
+                    .eval_expr(value, env)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Return(value))
             }
@@ -270,16 +300,17 @@ impl Interpreter {
                 condition,
                 then_block,
                 else_block,
+                ..
             } => {
-                let condition_span = spans.expr_span(condition).or_else(|| stmt_span.clone());
+                let condition_span = condition.span().cloned().or_else(|| stmt_span.clone());
                 let condition = self
-                    .eval_expr(condition, env.clone(), spans)
+                    .eval_expr(condition, env.clone())
                     .map_err(|err| err.with_fallback_span(condition_span.clone()))?;
                 match condition {
-                    Value::Bool(true) => self.execute_block(then_block, env, spans),
+                    Value::Bool(true) => self.execute_block(then_block, env),
                     Value::Bool(false) => {
                         if let Some(else_block) = else_block {
-                            self.execute_block(else_block, env, spans)
+                            self.execute_block(else_block, env)
                         } else {
                             Ok(ExecSignal::Continue)
                         }
@@ -290,14 +321,16 @@ impl Interpreter {
                     )),
                 }
             }
-            Stmt::While { condition, body } => {
-                let condition_span = spans.expr_span(condition).or_else(|| stmt_span.clone());
+            Stmt::While {
+                condition, body, ..
+            } => {
+                let condition_span = condition.span().cloned().or_else(|| stmt_span.clone());
                 loop {
                     let condition_value = self
-                        .eval_expr(condition, env.clone(), spans)
+                        .eval_expr(condition, env.clone())
                         .map_err(|err| err.with_fallback_span(condition_span.clone()))?;
                     match condition_value {
-                        Value::Bool(true) => match self.execute_block(body, env.clone(), spans)? {
+                        Value::Bool(true) => match self.execute_block(body, env.clone())? {
                             ExecSignal::Continue => {}
                             signal @ ExecSignal::Return(_) => return Ok(signal),
                         },
@@ -312,7 +345,9 @@ impl Interpreter {
                 }
                 Ok(ExecSignal::Continue)
             }
-            Stmt::FunctionDef { name, params, body } => {
+            Stmt::FunctionDef {
+                name, params, body, ..
+            } => {
                 if env.borrow().values.contains_key(name) {
                     return Err(RuntimeError::with_span(
                         format!("`{}`은(는) 현재 스코프에 이미 정의되어 있습니다.", name),
@@ -326,140 +361,140 @@ impl Interpreter {
                     params: params.clone(),
                     body: cloned_body.clone(),
                     env: env.clone(),
-                    spans: RuntimeSpanMap::from_cloned_statements(
-                        body,
-                        cloned_body.as_ref(),
-                        spans,
-                    ),
                 }));
                 env.borrow_mut().values.insert(name.clone(), function);
                 Ok(ExecSignal::Continue)
             }
-            Stmt::KeywordMessage {
+            Stmt::Send {
                 receiver,
                 selector,
-                arg,
+                args,
+                ..
             } => {
                 let receiver = self
-                    .eval_expr(receiver, env.clone(), spans)
+                    .eval_expr(receiver, env.clone())
                     .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
-                let arg = self
-                    .eval_expr(arg, env, spans)
-                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
-                self.execute_keyword_message(receiver, selector, arg)
+                let mut arg_values = Vec::with_capacity(args.len());
+                for arg in args {
+                    arg_values.push(
+                        self.eval_expr(arg, env.clone())
+                            .map_err(|err| err.with_fallback_span(stmt_span.clone()))?,
+                    );
+                }
+                self.execute_send_stmt(receiver, selector, arg_values)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Continue)
             }
-            Stmt::Expr(expr) => {
-                self.eval_expr(expr, env, spans)
+            Stmt::Expr { expr, .. } => {
+                self.eval_expr(expr, env)
                     .map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Continue)
             }
         }
     }
 
-    fn eval_expr(
-        &mut self,
-        expr: &Expr,
-        env: EnvRef,
-        spans: &RuntimeSpanMap,
-    ) -> Result<Value, RuntimeError> {
-        let expr_span = spans.expr_span(expr);
+    fn eval_expr(&mut self, expr: &Expr, env: EnvRef) -> Result<Value, RuntimeError> {
+        let expr_span = expr.span().cloned();
         match expr {
-            Expr::Name(name) => {
+            Expr::Name { name, .. } => {
                 lookup_value(&env, name).map_err(|err| err.with_fallback_span(expr_span))
             }
-            Expr::Int(raw) => raw.parse::<i64>().map(Value::Int).map_err(|_| {
+            Expr::Int { raw, .. } => raw.parse::<i64>().map(Value::Int).map_err(|_| {
                 RuntimeError::with_span(
                     format!("정수 리터럴 `{}`를 해석할 수 없습니다.", raw),
                     expr_span,
                 )
             }),
-            Expr::Float(raw) => raw.parse::<f64>().map(Value::Float).map_err(|_| {
+            Expr::Float { raw, .. } => raw.parse::<f64>().map(Value::Float).map_err(|_| {
                 RuntimeError::with_span(
                     format!("실수 리터럴 `{}`를 해석할 수 없습니다.", raw),
                     expr_span,
                 )
             }),
-            Expr::String(value) => Ok(Value::String(value.clone())),
-            Expr::Bool(value) => Ok(Value::Bool(*value)),
-            Expr::None => Ok(Value::None),
-            Expr::List(items) => {
+            Expr::String { value, .. } => Ok(Value::String(value.clone())),
+            Expr::Bool { value, .. } => Ok(Value::Bool(*value)),
+            Expr::None { .. } => Ok(Value::None),
+            Expr::List { items, .. } => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
                     values.push(
-                        self.eval_expr(item, env.clone(), spans)
+                        self.eval_expr(item, env.clone())
                             .map_err(|err| err.with_fallback_span(expr_span.clone()))?,
                     );
                 }
                 Ok(Value::List(Rc::new(RefCell::new(values))))
             }
-            Expr::Record(entries) => {
+            Expr::Record { entries, .. } => {
                 let mut map = BTreeMap::new();
                 for entry in entries {
                     map.insert(
                         entry.key.clone(),
-                        self.eval_expr(&entry.value, env.clone(), spans)
+                        self.eval_expr(&entry.value, env.clone())
                             .map_err(|err| err.with_fallback_span(expr_span.clone()))?,
                     );
                 }
                 Ok(Value::Record(Rc::new(RefCell::new(map))))
             }
-            Expr::Unary { op, expr } => {
+            Expr::Unary { op, expr, .. } => {
                 let value = self
-                    .eval_expr(expr, env, spans)
+                    .eval_expr(expr, env)
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 self.eval_unary(*op, value)
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
-            Expr::Binary { left, op, right } => {
+            Expr::Binary {
+                left, op, right, ..
+            } => {
                 let left = self
-                    .eval_expr(left, env.clone(), spans)
+                    .eval_expr(left, env.clone())
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 let right = self
-                    .eval_expr(right, env, spans)
+                    .eval_expr(right, env)
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 self.eval_binary(left, *op, right)
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 let callee = self
-                    .eval_expr(callee, env.clone(), spans)
+                    .eval_expr(callee, env.clone())
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 let mut arg_values = Vec::with_capacity(args.len());
                 for arg in args {
                     arg_values.push(
-                        self.eval_expr(arg, env.clone(), spans)
+                        self.eval_expr(arg, env.clone())
                             .map_err(|err| err.with_fallback_span(expr_span.clone()))?,
                     );
                 }
                 self.call_value(callee, arg_values, expr_span.clone())
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
-            Expr::TransformCall { input, callee } => {
-                let input = self
-                    .eval_expr(input, env.clone(), spans)
+            Expr::Send {
+                receiver,
+                selector,
+                args,
+                ..
+            } => {
+                let receiver = self
+                    .eval_expr(receiver, env.clone())
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
-                let callee = lookup_value(&env, callee)
-                    .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
-                self.call_value(callee, vec![input], expr_span.clone())
+                let mut arg_values = Vec::with_capacity(args.len());
+                for arg in args {
+                    arg_values.push(
+                        self.eval_expr(arg, env.clone())
+                            .map_err(|err| err.with_fallback_span(expr_span.clone()))?,
+                    );
+                }
+                self.eval_send_expr(receiver, selector, arg_values, env, expr_span.clone())
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, .. } => {
                 let base = self
-                    .eval_expr(base, env.clone(), spans)
+                    .eval_expr(base, env.clone())
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 let index = self
-                    .eval_expr(index, env, spans)
+                    .eval_expr(index, env)
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 self.eval_index(base, index)
-                    .map_err(|err| err.with_fallback_span(expr_span))
-            }
-            Expr::Property { base, name } => {
-                let base = self
-                    .eval_expr(base, env, spans)
-                    .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
-                self.eval_property(base, name)
                     .map_err(|err| err.with_fallback_span(expr_span))
             }
         }
@@ -546,7 +581,7 @@ impl Interpreter {
                 }
 
                 match self
-                    .execute_block(function.body.as_ref(), frame, &function.spans)
+                    .execute_block(function.body.as_ref(), frame)
                     .map_err(|err| err.with_call_frame(function.name.clone(), call_span))?
                 {
                     ExecSignal::Continue => Ok(Value::None),
@@ -655,81 +690,234 @@ impl Interpreter {
         }
     }
 
+    fn eval_word_message(
+        &self,
+        receiver: Value,
+        selector: &str,
+        args: Vec<Value>,
+    ) -> Result<Value, RuntimeError> {
+        let [arg] = expect_arity::<1>(selector, args)?;
+        match selector {
+            "더하기" => self.eval_binary(receiver, BinaryOp::Add, arg),
+            "빼기" => self.eval_binary(receiver, BinaryOp::Subtract, arg),
+            "곱하기" => self.eval_binary(receiver, BinaryOp::Multiply, arg),
+            "나누기" => self.eval_binary(receiver, BinaryOp::Divide, arg),
+            _ => Err(RuntimeError::new(format!(
+                "`{}` 단어 메시지는 아직 지원하지 않습니다.",
+                selector
+            ))),
+        }
+    }
+
+    fn eval_send_expr(
+        &mut self,
+        receiver: Value,
+        selector: &SendSelector,
+        args: Vec<Value>,
+        env: EnvRef,
+        expr_span: Option<Span>,
+    ) -> Result<Value, RuntimeError> {
+        match selector {
+            SendSelector::Property(name) => {
+                if !args.is_empty() {
+                    return Err(RuntimeError::new("속성 메시지는 인수를 받을 수 없습니다."));
+                }
+                self.eval_property(receiver, name)
+            }
+            SendSelector::Transform(callee_name) => {
+                if !args.is_empty() {
+                    return Err(RuntimeError::new("변환 호출은 추가 인수를 받을 수 없습니다."));
+                }
+                let callee = lookup_value(&env, callee_name)
+                    .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
+                self.call_value(callee, vec![receiver], expr_span)
+            }
+            SendSelector::Word(selector) => self.eval_word_message(receiver, selector, args),
+            SendSelector::Resultive { role, verb } => {
+                if !args.is_empty() {
+                    return Err(RuntimeError::new(
+                        "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
+                    ));
+                }
+                self.eval_resultive(receiver, role, verb)
+            }
+            SendSelector::Keyword(_) => Err(RuntimeError::new(
+                "키워드 메시지는 표현식 자리에서 사용할 수 없습니다.",
+            )),
+        }
+    }
+
+    fn execute_send_stmt(
+        &mut self,
+        receiver: Value,
+        selector: &SendSelector,
+        args: Vec<Value>,
+    ) -> Result<(), RuntimeError> {
+        match selector {
+            SendSelector::Keyword(selector) => {
+                self.execute_keyword_message(receiver, selector, args)
+            }
+            _ => Err(RuntimeError::new(
+                "이 메시지는 문장 자리에서 사용할 수 없습니다.",
+            )),
+        }
+    }
+
     fn eval_property(&self, base: Value, name: &str) -> Result<Value, RuntimeError> {
         match base {
             Value::Record(map) => {
-                map.borrow().get(name).cloned().ok_or_else(|| {
-                    RuntimeError::new(format!("이 값에는 `{}` 속성이 없습니다.", name))
-                })
+                if let Some(value) = map.borrow().get(name).cloned() {
+                    return Ok(value);
+                }
+
+                if let Some(selector) = unary_message_for_property(name) {
+                    return self.send_unary_message(Value::Record(map), selector);
+                }
+
+                Err(RuntimeError::new(format!("이 값에는 `{}` 속성이 없습니다.", name)))
             }
-            Value::List(items) => match name {
-                "길이" => Ok(Value::Int(items.borrow().len() as i64)),
-                _ => Err(RuntimeError::new(format!(
-                    "목록에는 `{}` 속성이 없습니다.",
-                    name
-                ))),
-            },
-            Value::String(text) => match name {
-                "길이" => Ok(Value::Int(text.chars().count() as i64)),
-                _ => Err(RuntimeError::new(format!(
-                    "문자열에는 `{}` 속성이 없습니다.",
-                    name
-                ))),
-            },
-            Value::Int(value) => match name {
-                "제곱" => Ok(Value::Int(value * value)),
-                _ => Err(RuntimeError::new(format!(
-                    "정수에는 `{}` 속성이 없습니다.",
-                    name
-                ))),
-            },
-            Value::Float(value) => match name {
-                "제곱" => Ok(Value::Float(value * value)),
-                _ => Err(RuntimeError::new(format!(
-                    "실수에는 `{}` 속성이 없습니다.",
-                    name
-                ))),
-            },
-            _ => Err(RuntimeError::new(format!(
-                "이 값에는 `{}` 속성이 없습니다.",
-                name
-            ))),
+            other => {
+                if let Some(selector) = unary_message_for_property(name) {
+                    self.send_unary_message(other, selector)
+                } else {
+                    Err(RuntimeError::new(format!(
+                        "이 값에는 `{}` 속성이 없습니다.",
+                        name
+                    )))
+                }
+            }
         }
+    }
+
+    fn eval_resultive(
+        &self,
+        receiver: Value,
+        role: &str,
+        verb: &str,
+    ) -> Result<Value, RuntimeError> {
+        let selector = resultive_message_for(role, verb).ok_or_else(|| {
+            RuntimeError::new("현재 결과 서술 문법은 `맨위 원반을 빼낸 것이다`만 지원합니다.")
+        })?;
+        self.send_resultive_message(receiver, selector)
     }
 
     fn execute_keyword_message(
         &mut self,
         receiver: Value,
         selector: &str,
-        arg: Value,
+        args: Vec<Value>,
     ) -> Result<(), RuntimeError> {
-        match receiver {
-            Value::List(items) if selector == "추가" => {
-                items.borrow_mut().push(arg);
-                Ok(())
+        let selector = keyword_message_for_selector(selector).ok_or_else(|| {
+            RuntimeError::new(format!("`{}` 키워드 메시지는 아직 지원하지 않습니다.", selector))
+        })?;
+        self.send_keyword_message(receiver, selector, args)
+    }
+
+    fn send_unary_message(
+        &self,
+        receiver: Value,
+        selector: UnaryMessage,
+    ) -> Result<Value, RuntimeError> {
+        match (receiver, selector) {
+            (Value::List(items), UnaryMessage::Length) => Ok(Value::Int(items.borrow().len() as i64)),
+            (Value::String(text), UnaryMessage::Length) => {
+                Ok(Value::Int(text.chars().count() as i64))
             }
-            Value::Host(HostValue::Canvas) => self.execute_canvas_message(selector, arg),
-            _ if selector == "추가" => Err(RuntimeError::new(
-                "`추가` 메시지는 목록에만 보낼 수 있습니다.",
+            (Value::Record(map), UnaryMessage::Length) => Ok(Value::Int(map.borrow().len() as i64)),
+            (Value::Int(value), UnaryMessage::Square) => Ok(Value::Int(value * value)),
+            (Value::Float(value), UnaryMessage::Square) => Ok(Value::Float(value * value)),
+            (Value::List(_), UnaryMessage::Square) => {
+                Err(RuntimeError::new("목록에는 `제곱` 속성이 없습니다."))
+            }
+            (Value::String(_), UnaryMessage::Square) => {
+                Err(RuntimeError::new("문자열에는 `제곱` 속성이 없습니다."))
+            }
+            (Value::Record(_), UnaryMessage::Square) => {
+                Err(RuntimeError::new("이 값에는 `제곱` 속성이 없습니다."))
+            }
+            (Value::Int(_), UnaryMessage::Length) => {
+                Err(RuntimeError::new("정수에는 `길이` 속성이 없습니다."))
+            }
+            (Value::Float(_), UnaryMessage::Length) => {
+                Err(RuntimeError::new("실수에는 `길이` 속성이 없습니다."))
+            }
+            (_, UnaryMessage::Length) => Err(RuntimeError::new(
+                "이 값에는 `길이` 속성이 없습니다.",
             )),
-            _ => Err(RuntimeError::new(format!(
-                "`{}` 키워드 메시지는 아직 지원하지 않습니다.",
-                selector
-            ))),
+            (_, UnaryMessage::Square) => Err(RuntimeError::new(
+                "이 값에는 `제곱` 속성이 없습니다.",
+            )),
         }
     }
 
-    fn execute_canvas_message(&mut self, selector: &str, arg: Value) -> Result<(), RuntimeError> {
-        let record = expect_record(selector, arg)?;
+    fn send_resultive_message(
+        &self,
+        receiver: Value,
+        selector: ResultiveMessage,
+    ) -> Result<Value, RuntimeError> {
+        match (receiver, selector) {
+            (Value::List(items), ResultiveMessage::PopTopDisk) => items
+                .borrow_mut()
+                .pop()
+                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 원반을 빼낼 수 없습니다.")),
+            (_, ResultiveMessage::PopTopDisk) => Err(RuntimeError::new(
+                "`맨위 원반을 빼낸 것이다`는 목록에만 사용할 수 있습니다.",
+            )),
+        }
+    }
+
+    fn send_keyword_message(
+        &mut self,
+        receiver: Value,
+        selector: KeywordMessage,
+        args: Vec<Value>,
+    ) -> Result<(), RuntimeError> {
+        match (receiver, selector) {
+            (Value::List(items), KeywordMessage::Push) => {
+                let [arg] = expect_arity::<1>("추가", args)?;
+                items.borrow_mut().push(arg);
+                Ok(())
+            }
+            (Value::Host(HostValue::Canvas), selector) => {
+                let [arg] = expect_arity::<1>("그림판 메시지", args)?;
+                self.execute_canvas_message(selector, arg)
+            }
+            (_, KeywordMessage::Push) => Err(RuntimeError::new(
+                "`추가` 메시지는 목록에만 보낼 수 있습니다.",
+            )),
+            (_, KeywordMessage::CanvasClear) => Err(RuntimeError::new(
+                "`지우기` 메시지는 그림판에만 보낼 수 있습니다.",
+            )),
+            (_, KeywordMessage::CanvasFillRect) => Err(RuntimeError::new(
+                "`사각형채우기` 메시지는 그림판에만 보낼 수 있습니다.",
+            )),
+            (_, KeywordMessage::CanvasFillText) => Err(RuntimeError::new(
+                "`글자쓰기` 메시지는 그림판에만 보낼 수 있습니다.",
+            )),
+        }
+    }
+
+    fn execute_canvas_message(
+        &mut self,
+        selector: KeywordMessage,
+        arg: Value,
+    ) -> Result<(), RuntimeError> {
+        let selector_name = match selector {
+            KeywordMessage::CanvasClear => "지우기",
+            KeywordMessage::CanvasFillRect => "사각형채우기",
+            KeywordMessage::CanvasFillText => "글자쓰기",
+            KeywordMessage::Push => "추가",
+        };
+        let record = expect_record(selector_name, arg)?;
         match selector {
-            "지우기" => {
+            KeywordMessage::CanvasClear => {
                 let background = expect_string_field(&record, &["배경색", "색"])?;
                 self.begin_canvas_frame();
                 self.current_canvas_commands
                     .push(CanvasCommand::Clear { background });
                 Ok(())
             }
-            "사각형채우기" => {
+            KeywordMessage::CanvasFillRect => {
                 let x = expect_number_field(&record, "x")?;
                 let y = expect_number_field(&record, "y")?;
                 let width = expect_number_field(&record, "너비")?;
@@ -744,7 +932,7 @@ impl Interpreter {
                 });
                 Ok(())
             }
-            "글자쓰기" => {
+            KeywordMessage::CanvasFillText => {
                 let text = expect_string_field(&record, &["글"])?;
                 let x = expect_number_field(&record, "x")?;
                 let y = expect_number_field(&record, "y")?;
@@ -759,10 +947,9 @@ impl Interpreter {
                 });
                 Ok(())
             }
-            _ => Err(RuntimeError::new(format!(
-                "`그림판`은 `{}` 동작을 아직 지원하지 않습니다.",
-                selector
-            ))),
+            KeywordMessage::Push => Err(RuntimeError::new(
+                "`그림판`은 `추가` 동작을 지원하지 않습니다.",
+            )),
         }
     }
 
@@ -777,9 +964,11 @@ impl Interpreter {
             return;
         }
 
-        self.canvas_frames.push(CanvasFrame {
+        let frame = CanvasFrame {
             commands: std::mem::take(&mut self.current_canvas_commands),
-        });
+        };
+        self.canvas_frames.push(frame.clone());
+        self.events.push(ExecutionEvent::CanvasFrame { frame });
     }
 }
 
@@ -829,358 +1018,6 @@ impl Value {
             Value::Function(FunctionValue::User(_)) => "<함수>".to_string(),
             Value::Host(HostValue::Canvas) => "<그림판>".to_string(),
         }
-    }
-}
-
-impl RuntimeSpanMap {
-    fn from_program(program: &Program, metadata: &ParseMetadata) -> Self {
-        let mut map = Self::default();
-        let mut cursor = RuntimeSpanCursor::from_metadata(metadata);
-        for statement in &program.statements {
-            map.collect_stmt(statement, &mut cursor);
-        }
-        map
-    }
-
-    fn from_cloned_statements(original: &[Stmt], cloned: &[Stmt], source: &RuntimeSpanMap) -> Self {
-        let mut map = Self::default();
-        for (original_stmt, cloned_stmt) in original.iter().zip(cloned.iter()) {
-            map.copy_stmt_spans(original_stmt, cloned_stmt, source);
-        }
-        map
-    }
-
-    fn stmt_span(&self, stmt: &Stmt) -> Option<Span> {
-        self.stmt_spans
-            .get(&(stmt as *const Stmt as usize))
-            .cloned()
-    }
-
-    fn expr_span(&self, expr: &Expr) -> Option<Span> {
-        self.expr_spans
-            .get(&(expr as *const Expr as usize))
-            .cloned()
-    }
-
-    fn collect_stmt(&mut self, stmt: &Stmt, cursor: &mut RuntimeSpanCursor) {
-        match stmt {
-            Stmt::Bind { value, .. }
-            | Stmt::Assign { value, .. }
-            | Stmt::Print { value }
-            | Stmt::Return { value }
-            | Stmt::Expr(value) => self.collect_expr(value, cursor),
-            Stmt::KeywordMessage { receiver, arg, .. } => {
-                self.collect_expr(receiver, cursor);
-                self.collect_expr(arg, cursor);
-            }
-            Stmt::If {
-                condition,
-                then_block,
-                else_block,
-            } => {
-                self.collect_expr(condition, cursor);
-                for statement in then_block {
-                    self.collect_stmt(statement, cursor);
-                }
-                if let Some(else_block) = else_block {
-                    for statement in else_block {
-                        self.collect_stmt(statement, cursor);
-                    }
-                }
-            }
-            Stmt::While { condition, body } => {
-                self.collect_expr(condition, cursor);
-                for statement in body {
-                    self.collect_stmt(statement, cursor);
-                }
-            }
-            Stmt::FunctionDef { body, .. } => {
-                for statement in body {
-                    self.collect_stmt(statement, cursor);
-                }
-            }
-        }
-
-        if let Some(span) = cursor.next_statement_span() {
-            self.stmt_spans.insert(stmt as *const Stmt as usize, span);
-        }
-    }
-
-    fn collect_expr(&mut self, expr: &Expr, cursor: &mut RuntimeSpanCursor) {
-        match expr {
-            Expr::Name(_)
-            | Expr::Int(_)
-            | Expr::Float(_)
-            | Expr::String(_)
-            | Expr::Bool(_)
-            | Expr::None => {}
-            Expr::List(items) => {
-                for item in items {
-                    self.collect_expr(item, cursor);
-                }
-            }
-            Expr::Record(entries) => {
-                for entry in entries {
-                    self.collect_expr(&entry.value, cursor);
-                }
-            }
-            Expr::Unary { expr, .. } => self.collect_expr(expr, cursor),
-            Expr::Binary { left, right, .. } => {
-                self.collect_expr(left, cursor);
-                self.collect_expr(right, cursor);
-            }
-            Expr::Call { callee, args } => {
-                self.collect_expr(callee, cursor);
-                for arg in args {
-                    self.collect_expr(arg, cursor);
-                }
-            }
-            Expr::TransformCall { input, .. } => self.collect_expr(input, cursor),
-            Expr::Index { base, index } => {
-                self.collect_expr(base, cursor);
-                self.collect_expr(index, cursor);
-            }
-            Expr::Property { base, .. } => self.collect_expr(base, cursor),
-        }
-
-        if let Some(span) = cursor.next_expr_span() {
-            self.expr_spans.insert(expr as *const Expr as usize, span);
-        }
-    }
-
-    fn copy_stmt_spans(&mut self, original: &Stmt, cloned: &Stmt, source: &RuntimeSpanMap) {
-        match (original, cloned) {
-            (
-                Stmt::Bind {
-                    value: original_value,
-                    ..
-                },
-                Stmt::Bind {
-                    value: cloned_value,
-                    ..
-                },
-            )
-            | (
-                Stmt::Assign {
-                    value: original_value,
-                    ..
-                },
-                Stmt::Assign {
-                    value: cloned_value,
-                    ..
-                },
-            )
-            | (
-                Stmt::Print {
-                    value: original_value,
-                },
-                Stmt::Print {
-                    value: cloned_value,
-                },
-            )
-            | (
-                Stmt::Return {
-                    value: original_value,
-                },
-                Stmt::Return {
-                    value: cloned_value,
-                },
-            )
-            | (Stmt::Expr(original_value), Stmt::Expr(cloned_value)) => {
-                self.copy_expr_spans(original_value, cloned_value, source)
-            }
-            (
-                Stmt::KeywordMessage {
-                    receiver: original_receiver,
-                    arg: original_arg,
-                    ..
-                },
-                Stmt::KeywordMessage {
-                    receiver: cloned_receiver,
-                    arg: cloned_arg,
-                    ..
-                },
-            ) => {
-                self.copy_expr_spans(original_receiver, cloned_receiver, source);
-                self.copy_expr_spans(original_arg, cloned_arg, source);
-            }
-            (
-                Stmt::If {
-                    condition: original_condition,
-                    then_block: original_then,
-                    else_block: original_else,
-                },
-                Stmt::If {
-                    condition: cloned_condition,
-                    then_block: cloned_then,
-                    else_block: cloned_else,
-                },
-            ) => {
-                self.copy_expr_spans(original_condition, cloned_condition, source);
-                for (original_stmt, cloned_stmt) in original_then.iter().zip(cloned_then.iter()) {
-                    self.copy_stmt_spans(original_stmt, cloned_stmt, source);
-                }
-                if let (Some(original_else), Some(cloned_else)) = (original_else, cloned_else) {
-                    for (original_stmt, cloned_stmt) in original_else.iter().zip(cloned_else.iter())
-                    {
-                        self.copy_stmt_spans(original_stmt, cloned_stmt, source);
-                    }
-                }
-            }
-            (
-                Stmt::While {
-                    condition: original_condition,
-                    body: original_body,
-                },
-                Stmt::While {
-                    condition: cloned_condition,
-                    body: cloned_body,
-                },
-            ) => {
-                self.copy_expr_spans(original_condition, cloned_condition, source);
-                for (original_stmt, cloned_stmt) in original_body.iter().zip(cloned_body.iter()) {
-                    self.copy_stmt_spans(original_stmt, cloned_stmt, source);
-                }
-            }
-            (
-                Stmt::FunctionDef {
-                    body: original_body,
-                    ..
-                },
-                Stmt::FunctionDef {
-                    body: cloned_body, ..
-                },
-            ) => {
-                for (original_stmt, cloned_stmt) in original_body.iter().zip(cloned_body.iter()) {
-                    self.copy_stmt_spans(original_stmt, cloned_stmt, source);
-                }
-            }
-            _ => {}
-        }
-
-        if let Some(span) = source.stmt_span(original) {
-            self.stmt_spans.insert(cloned as *const Stmt as usize, span);
-        }
-    }
-
-    fn copy_expr_spans(&mut self, original: &Expr, cloned: &Expr, source: &RuntimeSpanMap) {
-        match (original, cloned) {
-            (Expr::List(original_items), Expr::List(cloned_items)) => {
-                for (original_item, cloned_item) in original_items.iter().zip(cloned_items.iter()) {
-                    self.copy_expr_spans(original_item, cloned_item, source);
-                }
-            }
-            (Expr::Record(original_entries), Expr::Record(cloned_entries)) => {
-                for (original_entry, cloned_entry) in
-                    original_entries.iter().zip(cloned_entries.iter())
-                {
-                    self.copy_expr_spans(&original_entry.value, &cloned_entry.value, source);
-                }
-            }
-            (
-                Expr::Unary {
-                    expr: original_expr,
-                    ..
-                },
-                Expr::Unary {
-                    expr: cloned_expr, ..
-                },
-            ) => self.copy_expr_spans(original_expr, cloned_expr, source),
-            (
-                Expr::Binary {
-                    left: original_left,
-                    right: original_right,
-                    ..
-                },
-                Expr::Binary {
-                    left: cloned_left,
-                    right: cloned_right,
-                    ..
-                },
-            ) => {
-                self.copy_expr_spans(original_left, cloned_left, source);
-                self.copy_expr_spans(original_right, cloned_right, source);
-            }
-            (
-                Expr::Call {
-                    callee: original_callee,
-                    args: original_args,
-                },
-                Expr::Call {
-                    callee: cloned_callee,
-                    args: cloned_args,
-                },
-            ) => {
-                self.copy_expr_spans(original_callee, cloned_callee, source);
-                for (original_arg, cloned_arg) in original_args.iter().zip(cloned_args.iter()) {
-                    self.copy_expr_spans(original_arg, cloned_arg, source);
-                }
-            }
-            (
-                Expr::TransformCall {
-                    input: original_input,
-                    ..
-                },
-                Expr::TransformCall {
-                    input: cloned_input,
-                    ..
-                },
-            ) => self.copy_expr_spans(original_input, cloned_input, source),
-            (
-                Expr::Index {
-                    base: original_base,
-                    index: original_index,
-                },
-                Expr::Index {
-                    base: cloned_base,
-                    index: cloned_index,
-                },
-            ) => {
-                self.copy_expr_spans(original_base, cloned_base, source);
-                self.copy_expr_spans(original_index, cloned_index, source);
-            }
-            (
-                Expr::Property {
-                    base: original_base,
-                    ..
-                },
-                Expr::Property {
-                    base: cloned_base, ..
-                },
-            ) => self.copy_expr_spans(original_base, cloned_base, source),
-            _ => {}
-        }
-
-        if let Some(span) = source.expr_span(original) {
-            self.expr_spans.insert(cloned as *const Expr as usize, span);
-        }
-    }
-}
-
-impl RuntimeSpanCursor {
-    fn from_metadata(metadata: &ParseMetadata) -> Self {
-        Self {
-            statement_spans: metadata.statement_spans.clone(),
-            statement_index: 0,
-            expr_spans: metadata.expr_spans.clone(),
-            expr_index: 0,
-        }
-    }
-
-    fn next_statement_span(&mut self) -> Option<Span> {
-        let span = self.statement_spans.get(self.statement_index).cloned();
-        if span.is_some() {
-            self.statement_index += 1;
-        }
-        span
-    }
-
-    fn next_expr_span(&mut self) -> Option<Span> {
-        let span = self.expr_spans.get(self.expr_index).cloned();
-        if span.is_some() {
-            self.expr_index += 1;
-        }
-        span
     }
 }
 
@@ -1376,6 +1213,19 @@ fn expect_string_field(
         "`{}` 필드가 필요합니다.",
         keys.join("` 또는 `")
     )))
+}
+
+fn expect_sleep_seconds(value: Value) -> Result<f64, RuntimeError> {
+    match value {
+        Value::Int(value) if value >= 0 => Ok(value as f64),
+        Value::Float(value) if value.is_finite() && value >= 0.0 => Ok(value),
+        Value::Int(_) | Value::Float(_) => Err(RuntimeError::new(
+            "`쉬기` 시간은 0 이상의 값이어야 합니다.",
+        )),
+        _ => Err(RuntimeError::new(
+            "`쉬기` 시간은 숫자여야 합니다.",
+        )),
+    }
 }
 
 fn expect_arity<const N: usize>(name: &str, args: Vec<Value>) -> Result<[Value; N], RuntimeError> {

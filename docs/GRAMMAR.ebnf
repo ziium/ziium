@@ -7,6 +7,7 @@ program         = { newline }, { statement, { newline } }, EOF ;
 statement       = bind_stmt
                 | assign_stmt
                 | print_stmt
+                | sleep_stmt
                 | return_stmt
                 | if_stmt
                 | while_stmt
@@ -15,9 +16,10 @@ statement       = bind_stmt
                 | call_stmt
                 ;
 
-bind_stmt       = IDENT, TOPIC, expression, COPULA, [ PERIOD ] ;
+bind_stmt       = IDENT, TOPIC, ( expression, COPULA | resultive_expr ), [ PERIOD ] ;
 assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ] ;
 print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
+sleep_stmt      = expression, SECOND_UNIT, SLEEP, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
 keyword_message_stmt
                 = expression, LOCATIVE, expression, [ DIRECTION ], IDENT, [ PERIOD ] ;
@@ -62,6 +64,7 @@ call_suffix     = LPAREN, [ arg_list ], RPAREN ;
 transform_suffix = DIRECTION, IDENT ;
 index_suffix    = LBRACKET, expression, RBRACKET ;
 property_suffix = GEN, IDENT ;
+resultive_expr  = expression, FROM, TOP_DISK, OBJECT, POP_RESULT ;
 
 primary         = IDENT
                 | INT
@@ -86,6 +89,7 @@ TOPIC           = "은" | "는" ;
 OBJECT          = "을" | "를" ;
 GEN             = "의" ;
 LOCATIVE        = "에" ;
+FROM            = "에서" ;
 DIRECTION       = "로" | "으로" ;
 PERIOD          = "." ;
 COPULA          = "이다" ;
@@ -112,6 +116,11 @@ ADD_WORD        = IDENT("더하기") ;
 SUB_WORD        = IDENT("빼기") ;
 MUL_WORD        = IDENT("곱하기") ;
 DIV_WORD        = IDENT("나누기") ;
+SECOND_UNIT     = IDENT("초") ;
+SLEEP           = IDENT("쉬기") ;
+TOP_DISK        = IDENT("맨위"), IDENT("원반") ;
+POP_RESULT      = IDENT("빼낸"), RESULT_MARKER ;
+RESULT_MARKER   = "것이다" ;
 
 (* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
    INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,

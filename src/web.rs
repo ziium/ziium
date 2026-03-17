@@ -7,6 +7,7 @@ pub struct WebRunResult {
     output: String,
     error: String,
     canvas_frames_json: String,
+    execution_events_json: String,
 }
 
 #[wasm_bindgen]
@@ -30,6 +31,11 @@ impl WebRunResult {
     pub fn canvas_frames_json(&self) -> String {
         self.canvas_frames_json.clone()
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn execution_events_json(&self) -> String {
+        self.execution_events_json.clone()
+    }
 }
 
 #[wasm_bindgen]
@@ -41,12 +47,15 @@ pub fn run_source_web(source: &str) -> WebRunResult {
             error: String::new(),
             canvas_frames_json: serde_json::to_string(&result.canvas_frames)
                 .unwrap_or_else(|_| "[]".to_string()),
+            execution_events_json: serde_json::to_string(&result.events)
+                .unwrap_or_else(|_| "[]".to_string()),
         },
         Err(err) => WebRunResult {
             ok: false,
             output: String::new(),
             error: err.to_string(),
             canvas_frames_json: "[]".to_string(),
+            execution_events_json: "[]".to_string(),
         },
     }
 }

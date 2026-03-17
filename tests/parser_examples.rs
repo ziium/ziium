@@ -1,4 +1,4 @@
-use ziium::{BinaryOp, Expr, Program, RecordEntry, Stmt, UnaryOp, parse_source};
+use ziium::{BinaryOp, BinarySurface, Expr, Program, RecordEntry, Stmt, UnaryOp, parse_source};
 
 #[test]
 fn parses_string_binding() {
@@ -44,7 +44,19 @@ fn parses_assignment_statement() {
                 left: Box::new(Expr::Name("점수".into())),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Int("1".into())),
+                form: BinarySurface::Symbol,
             },
+        }]
+    );
+}
+
+#[test]
+fn parses_sleep_statement() {
+    let program = parse_source("0.5초 쉬기.").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Sleep {
+            duration_seconds: Expr::Float("0.5".into()),
         }]
     );
 }
@@ -72,6 +84,7 @@ fn parses_binary_word_message_in_binding() {
                 left: Box::new(Expr::Int("7".into())),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Int("8".into())),
+                form: BinarySurface::Word,
             },
         }]
     );
@@ -144,6 +157,24 @@ fn parses_transform_call_in_binding() {
 }
 
 #[test]
+fn parses_resultive_binding() {
+    let program = parse_source("원반은 시작탑에서 맨위 원반을 빼낸 것이다.")
+        .expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "원반".into(),
+            value: Expr::Resultive {
+                receiver: Box::new(Expr::Name("시작탑".into())),
+                role: "맨위 원반".into(),
+                verb: "빼낸".into(),
+            },
+        }]
+    );
+}
+
+#[test]
 fn parses_property_print_statement() {
     let program = parse_source("사용자의 주소의 도시를 출력한다").expect("parse should succeed");
 
@@ -203,6 +234,7 @@ fn parses_function_definition_and_call_binding() {
                         left: Box::new(Expr::Name("왼쪽".into())),
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Name("오른쪽".into())),
+                        form: BinarySurface::Symbol,
                     },
                 }],
             },
@@ -235,6 +267,7 @@ fn parses_if_else_block() {
                 left: Box::new(Expr::Name("나이".into())),
                 op: BinaryOp::GreaterEqual,
                 right: Box::new(Expr::Int("20".into())),
+                form: BinarySurface::Symbol,
             },
             then_block: vec![Stmt::Print {
                 value: Expr::String("성인".into()),
@@ -267,6 +300,7 @@ fn parses_while_block_with_index_and_assignment() {
                     base: Box::new(Expr::Name("숫자들".into())),
                     name: "길이".into(),
                 }),
+                form: BinarySurface::Symbol,
             },
             body: vec![
                 Stmt::Print {
@@ -281,6 +315,7 @@ fn parses_while_block_with_index_and_assignment() {
                         left: Box::new(Expr::Name("인덱스".into())),
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Int("1".into())),
+                        form: BinarySurface::Symbol,
                     },
                 },
             ],
@@ -314,9 +349,11 @@ fn parses_standalone_call_and_precedence() {
                     }),
                     op: BinaryOp::And,
                     right: Box::new(Expr::Bool(false)),
+                    form: BinarySurface::Symbol,
                 }),
                 op: BinaryOp::Or,
                 right: Box::new(Expr::Bool(true)),
+                form: BinarySurface::Symbol,
             },
         }
     );

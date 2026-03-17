@@ -1,6 +1,6 @@
-use crate::ast::{Expr, Program, RecordEntry, Stmt};
+use crate::ast;
 use crate::error::ResolveError;
-use crate::parser::ParseMetadata;
+use crate::hir::{self, Expr, Program, RecordEntry, SendSelector, Stmt};
 use crate::token::Span;
 use std::collections::HashSet;
 
@@ -18,24 +18,16 @@ struct Scope {
 struct Resolver {
     scopes: Vec<Scope>,
     function_depth: usize,
-    metadata: ResolveMetadataCursor,
 }
 
-#[derive(Debug, Clone, Default)]
-struct ResolveMetadataCursor {
-    declaration_spans: Vec<Span>,
-    declaration_index: usize,
-    assign_target_spans: Vec<Span>,
-    assign_target_index: usize,
-    name_expr_spans: Vec<Span>,
-    name_expr_index: usize,
-    return_spans: Vec<Span>,
-    return_index: usize,
-}
-
-pub fn resolve_program(program: &Program) -> Result<(), ResolveError> {
+pub fn resolve_program(program: &ast::Program) -> Result<(), ResolveError> {
     let mut session = ResolverSession::new();
     session.resolve_program(program)
+}
+
+pub fn resolve_hir_program(program: &Program) -> Result<(), ResolveError> {
+    let mut session = ResolverSession::new();
+    session.resolve_hir_program(program)
 }
 
 impl ResolverSession {
@@ -49,15 +41,12 @@ impl ResolverSession {
         }
     }
 
-    pub fn resolve_program(&mut self, program: &Program) -> Result<(), ResolveError> {
-        self.resolve_program_with_metadata(program, &ParseMetadata::default())
+    pub fn resolve_program(&mut self, program: &ast::Program) -> Result<(), ResolveError> {
+        let hir_program = hir::lower_program(program);
+        self.resolve_hir_program(&hir_program)
     }
 
-    pub(crate) fn resolve_program_with_metadata(
-        &mut self,
-        program: &Program,
-        metadata: &ParseMetadata,
-    ) -> Result<(), ResolveError> {
+    pub fn resolve_hir_program(&mut self, program: &Program) -> Result<(), ResolveError> {
         let mut globals = self.globals.clone();
         globals
             .defined_eventually
@@ -66,7 +55,6 @@ impl ResolverSession {
         let mut resolver = Resolver {
             scopes: vec![globals],
             function_depth: 0,
-            metadata: ResolveMetadataCursor::from_metadata(metadata),
         };
         resolver.resolve_statements(&program.statements)?;
         self.globals = resolver
@@ -98,26 +86,46 @@ impl Resolver {
 
     fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<(), ResolveError> {
         match stmt {
-            Stmt::Bind { name, value } => {
+            Stmt::Bind {
+                name,
+                name_span,
+                value,
+                ..
+            } => {
                 self.resolve_expr(value)?;
-                self.declare(name)
+                self.declare(name, name_span.clone())
             }
-            Stmt::Assign { name, value } => {
-                let span = self.metadata.next_assign_target_span();
-                self.resolve_name(name, span)?;
+            Stmt::Assign {
+                name,
+                target_span,
+                value,
+                ..
+            } => {
+                self.resolve_name(name, target_span.clone())?;
                 self.resolve_expr(value)
             }
-            Stmt::Print { value } | Stmt::Expr(value) => self.resolve_expr(value),
-            Stmt::KeywordMessage { receiver, arg, .. } => {
-                self.resolve_expr(receiver)?;
-                self.resolve_expr(arg)
+            Stmt::Print { value, .. }
+            | Stmt::Sleep {
+                duration_seconds: value,
+                ..
             }
-            Stmt::Return { value } => {
-                let span = self.metadata.next_return_span();
+            | Stmt::Expr { expr: value, .. } => self.resolve_expr(value),
+            Stmt::Send {
+                receiver, args, ..
+            } => {
+                self.resolve_expr(receiver)?;
+                for arg in args {
+                    self.resolve_expr(arg)?;
+                }
+                Ok(())
+            }
+            Stmt::Return {
+                value, keyword_span, ..
+            } => {
                 if self.function_depth == 0 {
                     return Err(ResolveError::with_span(
                         "`돌려준다`는 함수 본문 안에서만 사용할 수 있습니다.",
-                        span,
+                        keyword_span.clone(),
                     ));
                 }
                 self.resolve_expr(value)
@@ -126,32 +134,43 @@ impl Resolver {
                 condition,
                 then_block,
                 else_block,
+                ..
             } => self.resolve_if(condition, then_block, else_block.as_deref()),
-            Stmt::While { condition, body } => {
+            Stmt::While {
+                condition, body, ..
+            } => {
                 self.resolve_expr(condition)?;
                 self.resolve_loop(body)
             }
-            Stmt::FunctionDef { name, params, body } => {
-                self.declare(name)?;
-                self.resolve_function(params, body)
+            Stmt::FunctionDef {
+                name,
+                name_span,
+                params,
+                param_spans,
+                body,
+                ..
+            } => {
+                self.declare(name, name_span.clone())?;
+                self.resolve_function(params, param_spans, body)
             }
         }
     }
 
     fn resolve_expr(&mut self, expr: &Expr) -> Result<(), ResolveError> {
         match expr {
-            Expr::Name(name) => {
-                let span = self.metadata.next_name_expr_span();
-                self.resolve_name(name, span)
-            }
-            Expr::Int(_) | Expr::Float(_) | Expr::String(_) | Expr::Bool(_) | Expr::None => Ok(()),
-            Expr::List(items) => {
+            Expr::Name { name, span } => self.resolve_name(name, span.clone()),
+            Expr::Int { .. }
+            | Expr::Float { .. }
+            | Expr::String { .. }
+            | Expr::Bool { .. }
+            | Expr::None { .. } => Ok(()),
+            Expr::List { items, .. } => {
                 for item in items {
                     self.resolve_expr(item)?;
                 }
                 Ok(())
             }
-            Expr::Record(entries) => {
+            Expr::Record { entries, .. } => {
                 for RecordEntry { value, .. } in entries {
                     self.resolve_expr(value)?;
                 }
@@ -162,23 +181,32 @@ impl Resolver {
                 self.resolve_expr(left)?;
                 self.resolve_expr(right)
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 self.resolve_expr(callee)?;
                 for arg in args {
                     self.resolve_expr(arg)?;
                 }
                 Ok(())
             }
-            Expr::TransformCall { input, callee } => {
-                self.resolve_expr(input)?;
-                let span = self.metadata.next_name_expr_span();
-                self.resolve_name(callee, span)
+            Expr::Send {
+                receiver,
+                selector,
+                args,
+                span,
+            } => {
+                self.resolve_expr(receiver)?;
+                for arg in args {
+                    self.resolve_expr(arg)?;
+                }
+                if let SendSelector::Transform(callee) = selector {
+                    self.resolve_name(callee, span.clone())?;
+                }
+                Ok(())
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, .. } => {
                 self.resolve_expr(base)?;
                 self.resolve_expr(index)
             }
-            Expr::Property { base, .. } => self.resolve_expr(base),
         }
     }
 
@@ -245,7 +273,12 @@ impl Resolver {
         }
     }
 
-    fn resolve_function(&mut self, params: &[String], body: &[Stmt]) -> Result<(), ResolveError> {
+    fn resolve_function(
+        &mut self,
+        params: &[String],
+        param_spans: &[Option<Span>],
+        body: &[Stmt],
+    ) -> Result<(), ResolveError> {
         self.function_depth += 1;
         let eventual_names = collect_unconditional_names(body);
         self.scopes.push(Scope {
@@ -254,8 +287,8 @@ impl Resolver {
         });
 
         let result = (|| {
-            for param in params {
-                self.declare(param)?;
+            for (param, span) in params.iter().zip(param_spans.iter()) {
+                self.declare(param, span.clone())?;
             }
             self.resolve_statements(body)
         })();
@@ -265,8 +298,7 @@ impl Resolver {
         result
     }
 
-    fn declare(&mut self, name: &str) -> Result<(), ResolveError> {
-        let span = self.metadata.next_declaration_span();
+    fn declare(&mut self, name: &str, span: Option<Span>) -> Result<(), ResolveError> {
         let current_scope = self
             .scopes
             .last_mut()
@@ -306,45 +338,6 @@ impl Resolver {
     }
 }
 
-impl ResolveMetadataCursor {
-    fn from_metadata(metadata: &ParseMetadata) -> Self {
-        Self {
-            declaration_spans: metadata.declaration_spans.clone(),
-            declaration_index: 0,
-            assign_target_spans: metadata.assign_target_spans.clone(),
-            assign_target_index: 0,
-            name_expr_spans: metadata.name_expr_spans.clone(),
-            name_expr_index: 0,
-            return_spans: metadata.return_spans.clone(),
-            return_index: 0,
-        }
-    }
-
-    fn next_declaration_span(&mut self) -> Option<Span> {
-        next_span(&self.declaration_spans, &mut self.declaration_index)
-    }
-
-    fn next_assign_target_span(&mut self) -> Option<Span> {
-        next_span(&self.assign_target_spans, &mut self.assign_target_index)
-    }
-
-    fn next_name_expr_span(&mut self) -> Option<Span> {
-        next_span(&self.name_expr_spans, &mut self.name_expr_index)
-    }
-
-    fn next_return_span(&mut self) -> Option<Span> {
-        next_span(&self.return_spans, &mut self.return_index)
-    }
-}
-
-fn next_span(spans: &[Span], index: &mut usize) -> Option<Span> {
-    let span = spans.get(*index).cloned();
-    if span.is_some() {
-        *index += 1;
-    }
-    span
-}
-
 fn builtin_names() -> HashSet<String> {
     [
         "길이",
@@ -370,9 +363,10 @@ fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {
             }
             Stmt::Assign { .. }
             | Stmt::Print { .. }
-            | Stmt::KeywordMessage { .. }
+            | Stmt::Sleep { .. }
+            | Stmt::Send { .. }
             | Stmt::Return { .. }
-            | Stmt::Expr(_)
+            | Stmt::Expr { .. }
             | Stmt::If { .. }
             | Stmt::While { .. } => {}
         }

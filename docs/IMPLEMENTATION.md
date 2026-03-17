@@ -19,7 +19,7 @@
 ## 전체 파이프라인
 
 ```txt
-source -> lexer -> normalizer -> parser -> resolver -> interpreter
+source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpreter
 ```
 
 ### 각 단계의 책임
@@ -28,7 +28,19 @@ source -> lexer -> normalizer -> parser -> resolver -> interpreter
 - `normalizer`: 한글 조사 모호성에 대한 문맥 보정
 - `parser`: AST 생성
 - `resolver`: 이름 해석, 스코프 검사, definite binding 검사
-- `interpreter`: AST 실행, 내장 함수/메시지 처리, 런타임 진단
+- `hir lowering`: surface AST를 `Send` 중심 HIR로 낮춘다
+- `interpreter`: HIR 실행, 내장 함수/메시지 처리, 런타임 진단
+- `interpreter` 실행 결과는 출력, 캔버스 프레임, `쉬기` 시간을 같은 이벤트 열로도 유지한다.
+
+### 현재 내부 의미 모델
+
+표면 AST는 여전히 `Call`, `TransformCall`, `Property`, `KeywordMessage`, `Resultive`처럼 surface syntax 중심으로 나뉜다. 그 다음 HIR lowering이 이를 `Send` 중심 표현으로 다시 정리한다.
+
+- unary message: `길이`, `제곱`
+- keyword message: `추가`, `지우기`, `사각형채우기`, `글자쓰기`
+- resultive message: `맨위 원반을 빼낸`
+
+즉 현재 구현은 `surface AST + send-centered HIR`의 2단 구조다. parser는 한국어 문장형 표면을 보존하고, interpreter는 HIR의 selector 기반 메시지 모델만 실행한다.
 
 ## 주요 소스 구조
 
@@ -38,7 +50,8 @@ source -> lexer -> normalizer -> parser -> resolver -> interpreter
 - `src/ast.rs`: AST
 - `src/parser.rs`: 구문 분석
 - `src/resolver.rs`: 이름 해석
-- `src/interpreter.rs`: 실행기
+- `src/hir.rs`: HIR과 AST -> HIR lowering
+- `src/interpreter.rs`: HIR 실행기
 - `src/error.rs`: 구조화된 진단
 - `src/main.rs`: CLI/REPL
 
@@ -121,7 +134,7 @@ cargo test
 
 ## 현재 우선순위
 
-1. 메시지 문법을 `Send` 중심 AST/HIR로 통합할지 결정
+1. HIR의 `SendSelector`를 더 넓은 메시지 집합까지 확장할지 결정
 2. `더하기/빼기/곱하기/나누기`, `추가` 외 메시지 집합 확장 여부 결정
 3. 정규화 규칙과 조사 모호성 처리 정교화
 4. 인터프리터 위에 더 낮은 실행 계층을 올릴지 검토
@@ -136,7 +149,7 @@ cargo test
 
 ### v0.2 후보
 
-- 메시지 중심 AST/HIR
+- 더 넓은 메시지 중심 HIR
 - unary noun / binary word / keyword verb 메시지 확장
 - 더 나은 REPL 경험
 - 포매터 초안

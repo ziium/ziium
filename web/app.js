@@ -8,9 +8,11 @@ const demos = {
     source: `탑옮기기 함수는 원반수, 시작, 보조, 목표를 받아
   원반수 == 1이면
     시작 + " -> " + 목표를 출력한다.
+    0.5초 쉬기.
   아니면
     탑옮기기(원반수 - 1, 시작, 목표, 보조)
     시작 + " -> " + 목표를 출력한다.
+    0.5초 쉬기.
     탑옮기기(원반수 - 1, 보조, 시작, 목표)
 
 탑옮기기(3, "A", "B", "C")
@@ -21,17 +23,24 @@ const demos = {
     summary:
       "지음 코드가 `그림판에 {...}으로/로 ...` 내장을 직접 호출해서 하노이탑 프레임을 만듭니다.",
     renderer: "canvas",
-    source: `원반색 함수는 원반을 받아
+    source: `배경색은 "#f8f1dc"이다.
+기둥색은 "#3c3328"이다.
+글자색은 "#443a30"이다.
+빨강은 "#d94841"이다.
+주황은 "#f08c00"이다.
+파랑은 "#33658a"이다.
+
+원반색 함수는 원반을 받아
   원반 == 1이면
-    "#d94841"을 돌려준다.
+    빨강을 돌려준다.
   아니면
     원반 == 2이면
-      "#f08c00"을 돌려준다.
+      주황을 돌려준다.
     아니면
-      "#33658a"을 돌려준다.
+      파랑을 돌려준다.
 
 기둥그리기 함수는 탑, 이름, 중심점을 받아
-  그림판에 { 글: 이름, x: 중심점 - 8, y: 62, 색: "#443a30", 크기: 22 }로 글자쓰기.
+  그림판에 { 글: 이름, x: 중심점 - 8, y: 62, 색: 글자색, 크기: 22 }로 글자쓰기.
   인덱스는 0이다.
   원반은 0이다.
   너비는 0이다.
@@ -46,23 +55,24 @@ const demos = {
     인덱스를 인덱스 + 1로 바꾼다.
 
 장면그리기 함수는 아무것도 받지 않아
-  그림판에 { 배경색: "#f8f1dc" }으로 지우기.
-  그림판에 { x: 80, y: 374, 너비: 800, 높이: 12, 색: "#3c3328" }으로 사각형채우기.
-  그림판에 { x: 205, y: 90, 너비: 10, 높이: 284, 색: "#3c3328" }으로 사각형채우기.
-  그림판에 { x: 475, y: 90, 너비: 10, 높이: 284, 색: "#3c3328" }으로 사각형채우기.
-  그림판에 { x: 745, y: 90, 너비: 10, 높이: 284, 색: "#3c3328" }으로 사각형채우기.
+  그림판에 { 배경색: 배경색 }으로 지우기.
+  그림판에 { x: 80, y: 374, 너비: 800, 높이: 12, 색: 기둥색 }으로 사각형채우기.
+  그림판에 { x: 205, y: 90, 너비: 10, 높이: 284, 색: 기둥색 }으로 사각형채우기.
+  그림판에 { x: 475, y: 90, 너비: 10, 높이: 284, 색: 기둥색 }으로 사각형채우기.
+  그림판에 { x: 745, y: 90, 너비: 10, 높이: 284, 색: 기둥색 }으로 사각형채우기.
   기둥그리기(탑A, "A", 210)
   기둥그리기(탑B, "B", 480)
   기둥그리기(탑C, "C", 750)
+  0.5초 쉬기.
 
 탑옮기기 함수는 개수, 시작탑, 보조탑, 목표탑을 받아
   개수 == 1이면
-    원반은 마지막꺼내기(시작탑)이다.
+    원반은 시작탑에서 맨위 원반을 빼낸 것이다.
     목표탑에 원반 추가.
     장면그리기()
   아니면
     탑옮기기(개수 - 1, 시작탑, 목표탑, 보조탑)
-    원반은 마지막꺼내기(시작탑)이다.
+    원반은 시작탑에서 맨위 원반을 빼낸 것이다.
     목표탑에 원반 추가.
     장면그리기()
     탑옮기기(개수 - 1, 보조탑, 시작탑, 목표탑)
@@ -93,6 +103,7 @@ const ctx = canvas.getContext("2d");
 
 let currentDemoId = "text-hanoi";
 let animationTimer = null;
+let playbackGeneration = 0;
 
 async function main() {
   await init();
@@ -108,7 +119,7 @@ function bindEvents() {
   }
 
   runButton.addEventListener("click", () => {
-    runCurrentDemo();
+    void runCurrentDemo();
   });
 }
 
@@ -123,7 +134,7 @@ function loadDemo(demoId) {
   setRightPanel(demo.renderer);
 
   if (demo.renderer === "canvas") {
-    canvasStatus.textContent = "지음 코드가 만든 캔버스 프레임을 기다리는 중입니다.";
+    canvasStatus.textContent = "실행 버튼을 누르면 캔버스 재생이 시작됩니다.";
   } else {
     statusText.textContent = "실행 버튼을 누르면 결과가 여기에 나옵니다.";
   }
@@ -136,8 +147,9 @@ function loadDemo(demoId) {
   clearCanvas();
 }
 
-function runCurrentDemo() {
+async function runCurrentDemo() {
   stopAnimation();
+  const playbackId = playbackGeneration;
   const demo = demos[currentDemoId];
   const result = run_source_web(editor.value);
 
@@ -153,21 +165,14 @@ function runCurrentDemo() {
     return;
   }
 
-  const text = result.output.trim();
-  const frames = JSON.parse(result.canvas_frames_json || "[]");
+  const events = JSON.parse(result.execution_events_json || "[]");
 
   if (demo.renderer === "canvas") {
-    canvasInfo.textContent =
-      text === ""
-        ? `출력 없음\n캔버스 프레임 ${frames.length}개 생성`
-        : `${text}\n\n캔버스 프레임 ${frames.length}개 생성`;
-    canvasStatus.textContent = `실행 성공: 캔버스 프레임 ${frames.length}개`;
-    renderCanvasFrames(frames);
+    await replayCanvasEvents(events, playbackId);
     return;
   }
 
-  output.textContent = text === "" ? "(출력 없음)" : text;
-  statusText.textContent = `실행 성공: ${countNonEmptyLines(result.output)}줄 출력`;
+  await replayTextEvents(events, playbackId);
 }
 
 function setRightPanel(renderer) {
@@ -176,28 +181,110 @@ function setRightPanel(renderer) {
   canvasPanel.classList.toggle("is-hidden", !showCanvas);
 }
 
-function renderCanvasFrames(frames) {
-  if (!Array.isArray(frames) || frames.length === 0) {
-    clearCanvas();
-    canvasStatus.textContent = "생성된 캔버스 프레임이 없습니다.";
-    return;
-  }
+async function replayTextEvents(events, playbackId) {
+  const lines = [];
+  output.textContent = "";
+  statusText.textContent = "실행 중...";
 
-  let step = 0;
-  drawFrame(frames[0]);
-  canvasStatus.textContent = `1 / ${frames.length} 프레임`;
-
-  animationTimer = window.setInterval(() => {
-    step += 1;
-    if (step >= frames.length) {
-      stopAnimation();
-      canvasStatus.textContent = `완료: ${frames.length} 프레임`;
+  for (const event of events) {
+    if (!isCurrentPlayback(playbackId)) {
       return;
     }
 
-    drawFrame(frames[step]);
-    canvasStatus.textContent = `${step + 1} / ${frames.length} 프레임`;
-  }, 650);
+    if (event.kind === "Output") {
+      lines.push(event.text);
+      output.textContent = lines.join("\n");
+      statusText.textContent = `실행 중: ${lines.length}줄 출력`;
+      continue;
+    }
+
+    if (event.kind === "Sleep") {
+      const stillCurrent = await waitForSeconds(event.seconds, playbackId);
+      if (!stillCurrent) {
+        return;
+      }
+    }
+  }
+
+  if (!isCurrentPlayback(playbackId)) {
+    return;
+  }
+
+  output.textContent = lines.length === 0 ? "(출력 없음)" : lines.join("\n");
+  statusText.textContent = `실행 성공: ${lines.length}줄 출력`;
+}
+
+async function replayCanvasEvents(events, playbackId) {
+  const lines = [];
+  const totalFrames = countCanvasFrames(events);
+  let shownFrames = 0;
+
+  clearCanvas();
+  updateCanvasInfo(lines, totalFrames);
+  canvasStatus.textContent =
+    totalFrames === 0 ? "실행 성공: 프레임 없음" : `재생 중: 0 / ${totalFrames} 프레임`;
+
+  for (const event of events) {
+    if (!isCurrentPlayback(playbackId)) {
+      return;
+    }
+
+    if (event.kind === "Output") {
+      lines.push(event.text);
+      updateCanvasInfo(lines, totalFrames);
+      continue;
+    }
+
+    if (event.kind === "CanvasFrame") {
+      drawFrame(event.frame);
+      shownFrames += 1;
+      canvasStatus.textContent = `재생 중: ${shownFrames} / ${totalFrames} 프레임`;
+      updateCanvasInfo(lines, totalFrames);
+      continue;
+    }
+
+    if (event.kind === "Sleep") {
+      const stillCurrent = await waitForSeconds(event.seconds, playbackId);
+      if (!stillCurrent) {
+        return;
+      }
+    }
+  }
+
+  if (!isCurrentPlayback(playbackId)) {
+    return;
+  }
+
+  canvasStatus.textContent =
+    totalFrames === 0 ? "실행 성공: 프레임 없음" : `완료: ${totalFrames} 프레임`;
+  updateCanvasInfo(lines, totalFrames);
+}
+
+function updateCanvasInfo(lines, totalFrames) {
+  const outputText = lines.length === 0 ? "출력 없음" : lines.join("\n");
+  canvasInfo.textContent = `${outputText}\n\n캔버스 프레임 ${totalFrames}개 생성`;
+}
+
+function countCanvasFrames(events) {
+  return events.filter((event) => event.kind === "CanvasFrame").length;
+}
+
+function isCurrentPlayback(playbackId) {
+  return playbackId === playbackGeneration;
+}
+
+function waitForSeconds(seconds, playbackId) {
+  const ms = Math.max(0, seconds) * 1000;
+  if (ms === 0) {
+    return Promise.resolve(isCurrentPlayback(playbackId));
+  }
+
+  return new Promise((resolve) => {
+    animationTimer = window.setTimeout(() => {
+      animationTimer = null;
+      resolve(isCurrentPlayback(playbackId));
+    }, ms);
+  });
 }
 
 function drawFrame(frame) {
@@ -256,17 +343,11 @@ function clearCanvas() {
 }
 
 function stopAnimation() {
+  playbackGeneration += 1;
   if (animationTimer != null) {
-    window.clearInterval(animationTimer);
+    window.clearTimeout(animationTimer);
     animationTimer = null;
   }
-}
-
-function countNonEmptyLines(text) {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean).length;
 }
 
 main().catch((error) => {

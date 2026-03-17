@@ -485,6 +485,7 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
     match word {
         "함수" => Some(TokenKind::Function),
         "이다" => Some(TokenKind::Copula),
+        "것이다" => Some(TokenKind::ResultMarker),
         "이면" => Some(TokenKind::If),
         "아니면" => Some(TokenKind::Else),
         "인" => Some(TokenKind::In),
@@ -507,6 +508,7 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
         "을" | "를" => Some(TokenKind::Object),
         "의" => Some(TokenKind::Gen),
         "에" => Some(TokenKind::Locative),
+        "에서" => Some(TokenKind::From),
         "로" | "으로" => Some(TokenKind::Direction),
         _ => None,
     }
@@ -518,8 +520,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
         ("이다", TokenKind::Copula),
         ("인", TokenKind::In),
     ];
-    const PARTICLES: [(&str, TokenKind); 10] = [
+    const PARTICLES: [(&str, TokenKind); 11] = [
         ("으로", TokenKind::Direction),
+        ("에서", TokenKind::From),
         ("은", TokenKind::Topic),
         ("는", TokenKind::Topic),
         ("이", TokenKind::Subject),

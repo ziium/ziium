@@ -4,10 +4,12 @@ use std::env;
 use std::fs;
 use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::process::ExitCode;
+use std::thread;
+use std::time::Duration;
 use unicode_width::UnicodeWidthStr;
 use ziium::{
     FrontendError, InterpreterSession, LexError, ParseError, ResolveError, RunError, RuntimeError,
-    Span, Token, TokenKind, lex, parse_source, run_source,
+    Span, Token, TokenKind, lex, parse_source, parse_source_to_hir, run_source,
 };
 
 fn main() -> ExitCode {
@@ -28,7 +30,7 @@ fn run_cli() -> Result<(), String> {
     let (mode, path) = match first.as_deref() {
         None if stdin_is_terminal => ("repl", None),
         None => ("run", None),
-        Some("run") | Some("tokens") | Some("ast") | Some("repl") => {
+        Some("run") | Some("tokens") | Some("ast") | Some("hir") | Some("repl") => {
             (first.as_deref().unwrap(), args.next())
         }
         Some(path) => ("run", Some(path.to_string())),
@@ -48,9 +50,7 @@ fn run_cli() -> Result<(), String> {
         "run" => {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
             let result = run_source(&source).map_err(|err| render_run_diagnostic(err, &source))?;
-            for line in result.output {
-                println!("{line}");
-            }
+            print_output(result)?;
         }
         "tokens" => {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
@@ -63,6 +63,12 @@ fn run_cli() -> Result<(), String> {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
             let program =
                 parse_source(&source).map_err(|err| render_frontend_diagnostic(err, &source))?;
+            println!("{program:#?}");
+        }
+        "hir" => {
+            let source = read_source(path.as_deref()).map_err(render_input_error)?;
+            let program = parse_source_to_hir(&source)
+                .map_err(|err| render_frontend_diagnostic(err, &source))?;
             println!("{program:#?}");
         }
         _ => return Err(usage()),
@@ -290,10 +296,18 @@ fn print_prompt(is_fresh: bool) -> Result<(), String> {
 
 fn print_output(result: ziium::ExecutionResult) -> Result<(), String> {
     let mut stdout = io::stdout().lock();
-    for line in result.output {
-        writeln!(stdout, "{line}").map_err(|err| {
-            render_cli_error("REPL 오류", format!("REPL 출력을 쓰지 못했습니다: {err}"))
-        })?;
+    for event in result.events {
+        match event {
+            ziium::ExecutionEvent::Output { text } => {
+                writeln!(stdout, "{text}").map_err(|err| {
+                    render_cli_error("REPL 오류", format!("REPL 출력을 쓰지 못했습니다: {err}"))
+                })?;
+            }
+            ziium::ExecutionEvent::Sleep { seconds } => {
+                thread::sleep(Duration::from_secs_f64(seconds));
+            }
+            ziium::ExecutionEvent::CanvasFrame { .. } => {}
+        }
     }
     stdout.flush().map_err(|err| {
         render_cli_error("REPL 오류", format!("REPL 출력을 비우지 못했습니다: {err}"))
@@ -488,7 +502,7 @@ enum ReplAction {
 }
 
 fn usage() -> String {
-    render_cli_error("사용법", "ziium [run|tokens|ast|repl] [파일경로]")
+    render_cli_error("사용법", "ziium [run|tokens|ast|hir|repl] [파일경로]")
 }
 
 fn render_input_error(err: io::Error) -> String {

@@ -27,6 +27,26 @@ fn runs_assignment_and_print() {
 }
 
 #[test]
+fn records_sleep_event_from_statement() {
+    let source = r#"0.5초 쉬기.
+"끝"을 출력한다."#;
+    let result = run_source(source).expect("program should run");
+
+    assert_eq!(result.output, vec!["끝".to_string()]);
+    assert_eq!(result.events.len(), 2);
+    assert_eq!(
+        result.events[0],
+        ziium::ExecutionEvent::Sleep { seconds: 0.5 }
+    );
+    assert_eq!(
+        result.events[1],
+        ziium::ExecutionEvent::Output {
+            text: "끝".to_string(),
+        }
+    );
+}
+
+#[test]
 fn runs_if_else_example() {
     let source = r#"나이는 20이다
 나이 >= 20이면
@@ -139,6 +159,15 @@ fn runs_pop_last_builtin_example() {
 마지막을 출력한다
 숫자들의 길이를 출력한다"#;
     assert_output(source, &["3", "2"]);
+}
+
+#[test]
+fn runs_resultive_binding_example() {
+    let source = r#"시작탑은 [3, 2, 1]이다
+원반은 시작탑에서 맨위 원반을 빼낸 것이다.
+원반을 출력한다.
+시작탑의 길이를 출력한다."#;
+    assert_output(source, &["1", "2"]);
 }
 
 #[test]

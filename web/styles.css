@@ -52,7 +52,7 @@ body {
 .page {
   position: relative;
   z-index: 1;
-  max-width: 1320px;
+  max-width: 1380px;
   margin: 0 auto;
   padding: 42px 20px 56px;
 }
@@ -201,8 +201,8 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.16fr) minmax(360px, 0.84fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -291,6 +291,11 @@ body {
   min-height: 540px;
   resize: vertical;
   padding: 18px;
+  font-size: 0.92rem;
+  line-height: 1.58;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 #output,

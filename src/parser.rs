@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Expr, Program, RecordEntry, Stmt, UnaryOp};
+use crate::ast::{BinaryOp, BinarySurface, Expr, Program, RecordEntry, Stmt, UnaryOp};
 use crate::error::{FrontendError, ParseError};
 use crate::lexer::lex;
 use crate::normalizer::normalize_tokens;
@@ -74,7 +74,9 @@ impl Parser {
         } else {
             let expr = self.parse_expression(0)?;
 
-            if self.match_kind(TokenKind::If) {
+            if self.at_ident_lexeme("초") && self.nth_ident_lexeme(1, "쉬기") {
+                self.parse_sleep_statement(expr)?
+            } else if self.match_kind(TokenKind::If) {
                 let then_block =
                     self.parse_indented_block("`이면` 뒤에는 들여쓴 블록이 와야 합니다.")?;
                 let else_block = if self.match_kind(TokenKind::Else) {
@@ -121,7 +123,7 @@ impl Parser {
                 self.consume_optional_period();
                 stmt
             } else {
-                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 조건문, 반복문, 함수 정의, 키워드 메시지 중 하나를 기대했습니다."));
+                return Err(self.error_here("문장을 해석할 수 없습니다. 바인딩, 출력, 쉬기, 조건문, 반복문, 함수 정의, 키워드 메시지 중 하나를 기대했습니다."));
             }
         };
 
@@ -145,6 +147,13 @@ impl Parser {
         })
     }
 
+    fn parse_sleep_statement(&mut self, duration_seconds: Expr) -> Result<Stmt, ParseError> {
+        self.expect_ident_lexeme("초", "시간 값 뒤에는 `초`가 와야 합니다.")?;
+        self.expect_ident_lexeme("쉬기", "`초` 뒤에는 `쉬기`가 와야 합니다.")?;
+        self.consume_optional_period();
+        Ok(Stmt::Sleep { duration_seconds })
+    }
+
     fn parse_bind(&mut self) -> Result<Stmt, ParseError> {
         let name_token = self.expect_ident_token("바인딩 이름이 필요합니다.")?;
         self.metadata
@@ -155,10 +164,46 @@ impl Parser {
             TokenKind::Topic,
             "바인딩 이름 뒤에는 `은` 또는 `는`이 와야 합니다.",
         )?;
-        let value = self.parse_expression(0)?;
-        self.expect(TokenKind::Copula, "바인딩 문장은 `이다`로 끝나야 합니다.")?;
+        let receiver = self.parse_expression(0)?;
+        let value = if self.match_kind(TokenKind::From) {
+            self.parse_resultive_expression(receiver)?
+        } else {
+            self.expect(TokenKind::Copula, "바인딩 문장은 `이다`로 끝나야 합니다.")?;
+            receiver
+        };
         self.consume_optional_period();
         Ok(Stmt::Bind { name, value })
+    }
+
+    fn parse_resultive_expression(&mut self, receiver: Expr) -> Result<Expr, ParseError> {
+        self.expect_ident_lexeme(
+            "맨위",
+            "`에서` 뒤에는 현재 `맨위 원반을 빼낸 것이다`만 지원합니다.",
+        )?;
+        let role_noun = self.expect_ident_lexeme(
+            "원반",
+            "`맨위` 뒤에는 현재 `원반`이 와야 합니다.",
+        )?;
+        self.expect(
+            TokenKind::Object,
+            "`맨위 원반` 뒤에는 `을` 또는 `를`이 와야 합니다.",
+        )?;
+        let verb = self.expect_ident_lexeme(
+            "빼낸",
+            "`맨위 원반을` 뒤에는 현재 `빼낸`만 지원합니다.",
+        )?;
+        let result_marker = self.expect(
+            TokenKind::ResultMarker,
+            "`빼낸` 뒤에는 `것이다`가 와야 합니다.",
+        )?;
+
+        let expr = Expr::Resultive {
+            receiver: Box::new(receiver),
+            role: format!("맨위 {}", role_noun.lexeme),
+            verb: verb.lexeme,
+        };
+        self.metadata.expr_spans.push(result_marker.span);
+        Ok(expr)
     }
 
     fn parse_assign(&mut self) -> Result<Stmt, ParseError> {
@@ -264,7 +309,7 @@ impl Parser {
         let mut left = self.parse_unary(allow_transform_call)?;
 
         loop {
-            let Some((op, precedence)) = self.current_binary_op() else {
+            let Some((op, precedence, form)) = self.current_binary_op() else {
                 break;
             };
 
@@ -281,6 +326,7 @@ impl Parser {
                 left: Box::new(left),
                 op,
                 right: Box::new(right),
+                form,
             };
             self.metadata.expr_spans.push(operator_span);
         }
@@ -493,6 +539,15 @@ impl Parser {
         self.expect(TokenKind::Ident, message)
     }
 
+    fn expect_ident_lexeme(&mut self, lexeme: &str, message: &str) -> Result<Token, ParseError> {
+        let token = self.expect(TokenKind::Ident, message)?;
+        if token.lexeme == lexeme {
+            Ok(token)
+        } else {
+            Err(ParseError::new(message, Some(token.span)))
+        }
+    }
+
     fn consume_optional_period(&mut self) {
         self.match_kind(TokenKind::Period);
     }
@@ -508,26 +563,34 @@ impl Parser {
         }
     }
 
-    fn current_binary_op(&self) -> Option<(BinaryOp, u8)> {
+    fn current_binary_op(&self) -> Option<(BinaryOp, u8, BinarySurface)> {
         let token = self.tokens.get(self.pos)?;
         match token.kind {
-            TokenKind::Or => Some((BinaryOp::Or, 1)),
-            TokenKind::And => Some((BinaryOp::And, 2)),
-            TokenKind::Eq => Some((BinaryOp::Equal, 3)),
-            TokenKind::Ne => Some((BinaryOp::NotEqual, 3)),
-            TokenKind::Lt => Some((BinaryOp::Less, 4)),
-            TokenKind::Le => Some((BinaryOp::LessEqual, 4)),
-            TokenKind::Gt => Some((BinaryOp::Greater, 4)),
-            TokenKind::Ge => Some((BinaryOp::GreaterEqual, 4)),
-            TokenKind::Plus => Some((BinaryOp::Add, 5)),
-            TokenKind::Minus => Some((BinaryOp::Subtract, 5)),
-            TokenKind::Ident if token.lexeme == "더하기" => Some((BinaryOp::Add, 5)),
-            TokenKind::Ident if token.lexeme == "빼기" => Some((BinaryOp::Subtract, 5)),
-            TokenKind::Star => Some((BinaryOp::Multiply, 6)),
-            TokenKind::Slash => Some((BinaryOp::Divide, 6)),
-            TokenKind::Percent => Some((BinaryOp::Modulo, 6)),
-            TokenKind::Ident if token.lexeme == "곱하기" => Some((BinaryOp::Multiply, 6)),
-            TokenKind::Ident if token.lexeme == "나누기" => Some((BinaryOp::Divide, 6)),
+            TokenKind::Or => Some((BinaryOp::Or, 1, BinarySurface::Symbol)),
+            TokenKind::And => Some((BinaryOp::And, 2, BinarySurface::Symbol)),
+            TokenKind::Eq => Some((BinaryOp::Equal, 3, BinarySurface::Symbol)),
+            TokenKind::Ne => Some((BinaryOp::NotEqual, 3, BinarySurface::Symbol)),
+            TokenKind::Lt => Some((BinaryOp::Less, 4, BinarySurface::Symbol)),
+            TokenKind::Le => Some((BinaryOp::LessEqual, 4, BinarySurface::Symbol)),
+            TokenKind::Gt => Some((BinaryOp::Greater, 4, BinarySurface::Symbol)),
+            TokenKind::Ge => Some((BinaryOp::GreaterEqual, 4, BinarySurface::Symbol)),
+            TokenKind::Plus => Some((BinaryOp::Add, 5, BinarySurface::Symbol)),
+            TokenKind::Minus => Some((BinaryOp::Subtract, 5, BinarySurface::Symbol)),
+            TokenKind::Ident if token.lexeme == "더하기" => {
+                Some((BinaryOp::Add, 5, BinarySurface::Word))
+            }
+            TokenKind::Ident if token.lexeme == "빼기" => {
+                Some((BinaryOp::Subtract, 5, BinarySurface::Word))
+            }
+            TokenKind::Star => Some((BinaryOp::Multiply, 6, BinarySurface::Symbol)),
+            TokenKind::Slash => Some((BinaryOp::Divide, 6, BinarySurface::Symbol)),
+            TokenKind::Percent => Some((BinaryOp::Modulo, 6, BinarySurface::Symbol)),
+            TokenKind::Ident if token.lexeme == "곱하기" => {
+                Some((BinaryOp::Multiply, 6, BinarySurface::Word))
+            }
+            TokenKind::Ident if token.lexeme == "나누기" => {
+                Some((BinaryOp::Divide, 6, BinarySurface::Word))
+            }
             _ => None,
         }
     }
@@ -572,6 +635,18 @@ impl Parser {
 
     fn nth_kind(&self, offset: usize) -> Option<TokenKind> {
         self.tokens.get(self.pos + offset).map(|token| token.kind)
+    }
+
+    fn at_ident_lexeme(&self, lexeme: &str) -> bool {
+        self.tokens
+            .get(self.pos)
+            .is_some_and(|token| token.kind == TokenKind::Ident && token.lexeme == lexeme)
+    }
+
+    fn nth_ident_lexeme(&self, offset: usize, lexeme: &str) -> bool {
+        self.tokens
+            .get(self.pos + offset)
+            .is_some_and(|token| token.kind == TokenKind::Ident && token.lexeme == lexeme)
     }
 
     fn advance(&mut self) -> Option<Token> {

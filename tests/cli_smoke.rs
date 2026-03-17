@@ -52,6 +52,24 @@ fn cli_prints_tokens() {
 }
 
 #[test]
+fn cli_prints_hir() {
+    let path = write_temp_program("문장은 \"지음\"으로 인사만들기이다.");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["hir", path.to_str().expect("utf-8 path")])
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Send"));
+    assert!(stdout.contains("selector: Transform("));
+    assert!(stdout.contains("\"인사만들기\""));
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn cli_reports_tagged_runtime_diagnostic() {
     let path = write_temp_program(
         r#"값은 1이다
