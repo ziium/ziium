@@ -79,15 +79,9 @@ pub struct CanvasFrame {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "kind")]
 pub enum ExecutionEvent {
-    Output {
-        text: String,
-    },
-    Sleep {
-        seconds: f64,
-    },
-    CanvasFrame {
-        frame: CanvasFrame,
-    },
+    Output { text: String },
+    Sleep { seconds: f64 },
+    CanvasFrame { frame: CanvasFrame },
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -248,11 +242,7 @@ impl Interpreter {
         Ok(ExecSignal::Continue)
     }
 
-    fn execute_stmt(
-        &mut self,
-        stmt: &Stmt,
-        env: EnvRef,
-    ) -> Result<ExecSignal, RuntimeError> {
+    fn execute_stmt(&mut self, stmt: &Stmt, env: EnvRef) -> Result<ExecSignal, RuntimeError> {
         let stmt_span = stmt.span().cloned();
         match stmt {
             Stmt::Bind { name, value, .. } => {
@@ -392,9 +382,7 @@ impl Interpreter {
                 Ok(ExecSignal::Continue)
             }
             Stmt::NamedCall {
-                callee,
-                named_args,
-                ..
+                callee, named_args, ..
             } => {
                 let callee = self
                     .eval_expr(callee, env.clone())
@@ -790,7 +778,9 @@ impl Interpreter {
             }
             SendSelector::Transform(callee_name) => {
                 if !args.is_empty() {
-                    return Err(RuntimeError::new("변환 호출은 추가 인수를 받을 수 없습니다."));
+                    return Err(RuntimeError::new(
+                        "변환 호출은 추가 인수를 받을 수 없습니다.",
+                    ));
                 }
                 let callee = lookup_value(&env, callee_name)
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
@@ -821,6 +811,14 @@ impl Interpreter {
             SendSelector::Keyword(selector) => {
                 self.execute_keyword_message(receiver, selector, args)
             }
+            SendSelector::Resultive { role, verb } => {
+                if !args.is_empty() {
+                    return Err(RuntimeError::new(
+                        "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
+                    ));
+                }
+                self.eval_resultive(receiver, role, verb).map(|_| ())
+            }
             _ => Err(RuntimeError::new(
                 "이 메시지는 문장 자리에서 사용할 수 없습니다.",
             )),
@@ -838,7 +836,10 @@ impl Interpreter {
                     return self.send_unary_message(Value::Record(map), selector);
                 }
 
-                Err(RuntimeError::new(format!("이 값에는 `{}` 속성이 없습니다.", name)))
+                Err(RuntimeError::new(format!(
+                    "이 값에는 `{}` 속성이 없습니다.",
+                    name
+                )))
             }
             other => {
                 if let Some(selector) = unary_message_for_property(name) {
@@ -860,7 +861,9 @@ impl Interpreter {
         verb: &str,
     ) -> Result<Value, RuntimeError> {
         let selector = resultive_message_for(role, verb).ok_or_else(|| {
-            RuntimeError::new("현재 결과 서술 문법은 `맨위 원반을 빼낸 것이다`만 지원합니다.")
+            RuntimeError::new(
+                "현재 결과 서술 문법은 `맨위 원반을 꺼낸 것이다` 또는 `맨위 원반을 꺼낸다`만 지원합니다.",
+            )
         })?;
         self.send_resultive_message(receiver, selector)
     }
@@ -872,7 +875,10 @@ impl Interpreter {
         args: Vec<Value>,
     ) -> Result<(), RuntimeError> {
         let selector = keyword_message_for_selector(selector).ok_or_else(|| {
-            RuntimeError::new(format!("`{}` 키워드 메시지는 아직 지원하지 않습니다.", selector))
+            RuntimeError::new(format!(
+                "`{}` 키워드 메시지는 아직 지원하지 않습니다.",
+                selector
+            ))
         })?;
         self.send_keyword_message(receiver, selector, args)
     }
@@ -883,7 +889,9 @@ impl Interpreter {
         selector: UnaryMessage,
     ) -> Result<Value, RuntimeError> {
         match (receiver, selector) {
-            (Value::List(items), UnaryMessage::Length) => Ok(Value::Int(items.borrow().len() as i64)),
+            (Value::List(items), UnaryMessage::Length) => {
+                Ok(Value::Int(items.borrow().len() as i64))
+            }
             (Value::String(text), UnaryMessage::Length) => {
                 Ok(Value::Int(text.chars().count() as i64))
             }
@@ -905,12 +913,12 @@ impl Interpreter {
             (Value::Float(_), UnaryMessage::Length) => {
                 Err(RuntimeError::new("실수에는 `길이` 속성이 없습니다."))
             }
-            (_, UnaryMessage::Length) => Err(RuntimeError::new(
-                "이 값에는 `길이` 속성이 없습니다.",
-            )),
-            (_, UnaryMessage::Square) => Err(RuntimeError::new(
-                "이 값에는 `제곱` 속성이 없습니다.",
-            )),
+            (_, UnaryMessage::Length) => {
+                Err(RuntimeError::new("이 값에는 `길이` 속성이 없습니다."))
+            }
+            (_, UnaryMessage::Square) => {
+                Err(RuntimeError::new("이 값에는 `제곱` 속성이 없습니다."))
+            }
         }
     }
 
@@ -923,9 +931,9 @@ impl Interpreter {
             (Value::List(items), ResultiveMessage::PopTopDisk) => items
                 .borrow_mut()
                 .pop()
-                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 원반을 빼낼 수 없습니다.")),
+                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 원반을 꺼낼 수 없습니다.")),
             (_, ResultiveMessage::PopTopDisk) => Err(RuntimeError::new(
-                "`맨위 원반을 빼낸 것이다`는 목록에만 사용할 수 있습니다.",
+                "`맨위 원반을 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
             )),
         }
     }
@@ -990,12 +998,8 @@ impl Interpreter {
                 let y = expect_number_field(&record, "y")?;
                 let color = expect_string_field(&record, &["색"])?;
                 let size = expect_number_field_or(record.get("크기"), 8.0, "크기")?;
-                self.current_canvas_commands.push(CanvasCommand::Dot {
-                    x,
-                    y,
-                    color,
-                    size,
-                });
+                self.current_canvas_commands
+                    .push(CanvasCommand::Dot { x, y, color, size });
                 Ok(())
             }
             KeywordMessage::CanvasFillRect => {
@@ -1315,12 +1319,10 @@ fn expect_sleep_seconds(value: Value) -> Result<f64, RuntimeError> {
     match value {
         Value::Int(value) if value >= 0 => Ok(value as f64),
         Value::Float(value) if value.is_finite() && value >= 0.0 => Ok(value),
-        Value::Int(_) | Value::Float(_) => Err(RuntimeError::new(
-            "`쉬기` 시간은 0 이상의 값이어야 합니다.",
-        )),
-        _ => Err(RuntimeError::new(
-            "`쉬기` 시간은 숫자여야 합니다.",
-        )),
+        Value::Int(_) | Value::Float(_) => {
+            Err(RuntimeError::new("`쉬기` 시간은 0 이상의 값이어야 합니다."))
+        }
+        _ => Err(RuntimeError::new("`쉬기` 시간은 숫자여야 합니다.")),
     }
 }
 

@@ -41,6 +41,11 @@ pub enum Stmt {
         selector: String,
         arg: Expr,
     },
+    Resultive {
+        receiver: Expr,
+        role: String,
+        verb: String,
+    },
     NamedCall {
         callee: Expr,
         named_args: Expr,
