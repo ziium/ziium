@@ -1,6 +1,7 @@
 use crate::ast::{BinaryOp, BinarySurface, Expr, Program, RecordEntry, Stmt, UnaryOp};
 use crate::error::{FrontendError, ParseError};
 use crate::lexer::lex;
+use crate::message::{KeywordMessage, keyword_message_for_selector};
 use crate::normalizer::normalize_tokens;
 use crate::token::{Span, Token, TokenKind};
 
@@ -142,14 +143,59 @@ impl Parser {
             "호출한다",
             "`로` 또는 `으로` 뒤에는 `호출한다`가 와야 합니다.",
         )?;
+        if !matches!(named_args, Expr::Record(_)) {
+            return Err(self.error_here(
+                "이름 붙은 호출의 인수는 레코드여야 합니다.",
+            ));
+        }
         self.consume_optional_period();
         Ok(Stmt::NamedCall { callee, named_args })
     }
 
     fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
         let arg = self.parse_expression_without_transform(0)?;
-        self.match_kind(TokenKind::Direction);
+        let has_direction = self.match_kind(TokenKind::Direction);
         let selector = self.expect_ident_token("`에` 뒤 키워드 메시지 이름이 필요합니다.")?;
+        let keyword = keyword_message_for_selector(&selector.lexeme).ok_or_else(|| {
+            ParseError::new(
+                "현재 키워드 메시지는 `추가`, `지우기`, `점찍기`, `사각형채우기`, `글자쓰기`만 지원합니다.",
+                Some(selector.span.clone()),
+            )
+        })?;
+
+        match keyword {
+            KeywordMessage::Push => {
+                if has_direction {
+                    return Err(ParseError::new(
+                        "`추가`는 `<목록>에 <값> 추가` 형식으로만 쓸 수 있습니다.",
+                        Some(selector.span),
+                    ));
+                }
+            }
+            KeywordMessage::CanvasClear
+            | KeywordMessage::CanvasFillRect
+            | KeywordMessage::CanvasFillText
+            | KeywordMessage::CanvasDot => {
+                if !has_direction {
+                    return Err(ParseError::new(
+                        "`그림판` 동작은 `그림판에 <레코드>로/으로 <동작>` 형식으로만 쓸 수 있습니다.",
+                        Some(selector.span.clone()),
+                    ));
+                }
+                if !matches!(&receiver, Expr::Name(name) if name == "그림판") {
+                    return Err(ParseError::new(
+                        "현재 `지우기`, `점찍기`, `사각형채우기`, `글자쓰기`는 `그림판`에만 사용할 수 있습니다.",
+                        Some(selector.span.clone()),
+                    ));
+                }
+                if !matches!(&arg, Expr::Record(_)) {
+                    return Err(ParseError::new(
+                        "`그림판` 동작의 인수는 레코드여야 합니다.",
+                        Some(selector.span.clone()),
+                    ));
+                }
+            }
+        }
 
         self.consume_optional_period();
         Ok(Stmt::KeywordMessage {

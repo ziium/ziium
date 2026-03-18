@@ -140,6 +140,40 @@ fn parses_named_call_statement() {
 }
 
 #[test]
+fn rejects_unknown_keyword_message_selector() {
+    let err = parse_source("과일들에 \"감\" 넣기.").expect_err("parse should fail");
+    assert!(err.to_string().contains("현재 키워드 메시지는"));
+}
+
+#[test]
+fn rejects_push_keyword_message_with_direction() {
+    let err = parse_source("과일들에 \"감\" 으로 추가.").expect_err("parse should fail");
+    assert!(err.to_string().contains("`추가`는 `<목록>에 <값> 추가` 형식"));
+}
+
+#[test]
+fn rejects_canvas_keyword_message_without_direction() {
+    let err = parse_source("그림판에 { x: 120, y: 80, 색: 빨강 } 점찍기.")
+        .expect_err("parse should fail");
+    assert!(err
+        .to_string()
+        .contains("`그림판` 동작은 `그림판에 <레코드>로/으로 <동작>` 형식"));
+}
+
+#[test]
+fn rejects_canvas_keyword_message_without_canvas_receiver() {
+    let err = parse_source("보드에 { x: 120, y: 80, 색: 빨강 }으로 점찍기.")
+        .expect_err("parse should fail");
+    assert!(err.to_string().contains("`그림판`에만 사용할 수 있습니다"));
+}
+
+#[test]
+fn rejects_named_call_statement_without_record_args() {
+    let err = parse_source("탑옮기기를 원반수로 호출한다.").expect_err("parse should fail");
+    assert!(err.to_string().contains("이름 붙은 호출의 인수는 레코드여야 합니다"));
+}
+
+#[test]
 fn parses_keyword_message_with_record_and_direction() {
     let program = parse_source(
         "그림판에 { x: 120, y: 80, 너비: 180, 높이: 40, 색: \"#d94841\" }으로 사각형채우기.",

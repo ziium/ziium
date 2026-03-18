@@ -23,8 +23,13 @@ print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 sleep_stmt      = expression, SECOND_UNIT, SLEEP, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
 keyword_message_stmt
-                = expression, LOCATIVE, expression, [ DIRECTION ], IDENT, [ PERIOD ] ;
-named_call_stmt = expression, OBJECT, expression, DIRECTION, CALL_VERB, [ PERIOD ] ;
+                = push_message_stmt
+                | canvas_message_stmt ;
+push_message_stmt
+                = expression, LOCATIVE, expression, PUSH_VERB, [ PERIOD ] ;
+canvas_message_stmt
+                = CANVAS_HOST, LOCATIVE, record_literal, DIRECTION, CANVAS_VERB, [ PERIOD ] ;
+named_call_stmt = expression, OBJECT, record_literal, DIRECTION, CALL_VERB, [ PERIOD ] ;
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
@@ -126,6 +131,12 @@ SECOND_UNIT     = IDENT("초") ;
 SLEEP           = IDENT("쉬기") ;
 TOP_DISK        = IDENT("맨위"), IDENT("원반") ;
 POP_RESULT      = IDENT("빼낸"), RESULT_MARKER ;
+PUSH_VERB       = IDENT("추가") ;
+CANVAS_HOST     = IDENT("그림판") ;
+CANVAS_VERB     = IDENT("지우기")
+                | IDENT("점찍기")
+                | IDENT("사각형채우기")
+                | IDENT("글자쓰기") ;
 RESULT_MARKER   = "것이다" ;
 CALL_VERB       = IDENT("호출한다") ;
 
