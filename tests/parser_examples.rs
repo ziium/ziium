@@ -264,16 +264,19 @@ fn parses_transform_call_in_binding() {
 
 #[test]
 fn parses_resultive_binding() {
-    let program =
-        parse_source("원반은 시작탑에서 맨위 원반을 꺼낸 것이다.").expect("parse should succeed");
+    let program = parse_source("원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
+        .expect("parse should succeed");
 
     assert_eq!(
         program.statements,
         vec![Stmt::Bind {
             name: "원반".into(),
             value: Expr::Resultive {
-                receiver: Box::new(Expr::Name("시작탑".into())),
-                role: "맨위 원반".into(),
+                receiver: Box::new(Expr::Property {
+                    base: Box::new(Expr::Name("시작탑".into())),
+                    name: "원반들".into(),
+                }),
+                role: "맨위 요소".into(),
                 verb: "꺼낸".into(),
             },
         }]
@@ -282,13 +285,17 @@ fn parses_resultive_binding() {
 
 #[test]
 fn parses_resultive_statement() {
-    let program = parse_source("시작탑에서 맨위 원반을 꺼낸다.").expect("parse should succeed");
+    let program =
+        parse_source("시작탑의 원반들에서 맨위 요소를 꺼낸다.").expect("parse should succeed");
 
     assert_eq!(
         program.statements,
         vec![Stmt::Resultive {
-            receiver: Expr::Name("시작탑".into()),
-            role: "맨위 원반".into(),
+            receiver: Expr::Property {
+                base: Box::new(Expr::Name("시작탑".into())),
+                name: "원반들".into(),
+            },
+            role: "맨위 요소".into(),
             verb: "꺼낸다".into(),
         }]
     );
@@ -296,10 +303,11 @@ fn parses_resultive_statement() {
 
 #[test]
 fn rejects_resultive_expression_without_binding() {
-    let err = parse_source("시작탑에서 맨위 원반을 꺼낸 것이다.").expect_err("parse should fail");
+    let err = parse_source("시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
+        .expect_err("parse should fail");
     assert!(
         err.to_string()
-            .contains("`맨위 원반을` 뒤에는 현재 `꺼낸다`만 지원합니다.")
+            .contains("`맨위 요소를` 뒤에는 현재 `꺼낸다`만 지원합니다.")
     );
 }
 

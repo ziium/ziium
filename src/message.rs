@@ -15,7 +15,7 @@ pub(crate) enum KeywordMessage {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ResultiveMessage {
-    PopTopDisk,
+    PopTopElement,
 }
 
 pub(crate) fn unary_message_for_property(name: &str) -> Option<UnaryMessage> {
@@ -39,7 +39,7 @@ pub(crate) fn keyword_message_for_selector(selector: &str) -> Option<KeywordMess
 
 pub(crate) fn resultive_message_for(role: &str, verb: &str) -> Option<ResultiveMessage> {
     match (role, verb) {
-        ("맨위 원반", "꺼낸") => Some(ResultiveMessage::PopTopDisk),
+        ("맨위 요소", "꺼낸") => Some(ResultiveMessage::PopTopElement),
         _ => None,
     }
 }
