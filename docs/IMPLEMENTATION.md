@@ -42,6 +42,13 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 
 즉 현재 구현은 `surface AST + send-centered HIR`의 2단 구조다. parser는 한국어 문장형 표면을 보존하고, interpreter는 HIR의 selector 기반 메시지 모델만 실행한다.
 
+현재 연구 원칙은 아래와 같다.
+
+- 실험 프레임은 표면 형태가 달라도 내부에서는 `Send` 공통형으로 모은다.
+- `A의 B`는 parser에서 속성 접근으로 먼저 읽고, built-in noun message 판단은 lowering/runtime으로 미룬다.
+- `A으로 B`는 당분간 unary transform frame으로만 다룬다.
+- 상태 변경과 결과 서술 프레임은 조회/계산 프레임보다 더 좁은 built-in 경계로 유지한다.
+
 ## 주요 소스 구조
 
 - `src/token.rs`: 토큰 종류
@@ -58,6 +65,7 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 ## 저장소 구조
 
 - `README.md`: 사람용 입구와 맛보기 예제
+- `HISTORY.md`: 버전별 단계와 변화 요약
 - `docs/LANGUAGE.md`: 공식 언어 문서
 - `docs/GRAMMAR.ebnf`: 파서용 형식 문법
 - `docs/DECISIONS.md`: 설계 결정 기록
@@ -134,10 +142,10 @@ cargo test
 
 ## 현재 우선순위
 
-1. HIR의 `SendSelector`를 더 넓은 메시지 집합까지 확장할지 결정
-2. `더하기/빼기/곱하기/나누기`, `추가` 외 메시지 집합 확장 여부 결정
-3. 정규화 규칙과 조사 모호성 처리 정교화
-4. 인터프리터 위에 더 낮은 실행 계층을 올릴지 검토
+1. `SendSelector`를 현재 닫힌 메시지 집합과 조사 프레임 경계에 맞게 더 명확히 정리
+2. `의` 프레임의 property-first parsing과 built-in noun fallback 규칙을 lowering/runtime 기준으로 고정
+3. `으로` 프레임의 unary transform 제한을 문서와 테스트로 더 분명히 고정
+4. 상태 변경 및 결과 서술 프레임의 닫힌 범위를 유지하면서 회귀 테스트를 보강
 
 ## 중장기 방향
 
