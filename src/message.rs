@@ -39,7 +39,7 @@ pub(crate) fn keyword_message_for_selector(selector: &str) -> Option<KeywordMess
 
 pub(crate) fn resultive_message_for(role: &str, verb: &str) -> Option<ResultiveMessage> {
     match (role, verb) {
-        ("맨위 원반", "빼낸") => Some(ResultiveMessage::PopTopDisk),
+        ("맨위 원반", "꺼낸") => Some(ResultiveMessage::PopTopDisk),
         _ => None,
     }
 }

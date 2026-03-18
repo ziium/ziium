@@ -105,8 +105,9 @@ fn parses_keyword_message_statement() {
 
 #[test]
 fn parses_named_call_statement() {
-    let program = parse_source("탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조, 목표 }로 호출한다.")
-        .expect("parse should succeed");
+    let program =
+        parse_source("탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조, 목표 }로 호출한다.")
+            .expect("parse should succeed");
 
     assert_eq!(
         program.statements,
@@ -148,16 +149,20 @@ fn rejects_unknown_keyword_message_selector() {
 #[test]
 fn rejects_push_keyword_message_with_direction() {
     let err = parse_source("과일들에 \"감\" 으로 추가.").expect_err("parse should fail");
-    assert!(err.to_string().contains("`추가`는 `<목록>에 <값> 추가` 형식"));
+    assert!(
+        err.to_string()
+            .contains("`추가`는 `<목록>에 <값> 추가` 형식")
+    );
 }
 
 #[test]
 fn rejects_canvas_keyword_message_without_direction() {
     let err = parse_source("그림판에 { x: 120, y: 80, 색: 빨강 } 점찍기.")
         .expect_err("parse should fail");
-    assert!(err
-        .to_string()
-        .contains("`그림판` 동작은 `그림판에 <레코드>로/으로 <동작>` 형식"));
+    assert!(
+        err.to_string()
+            .contains("`그림판` 동작은 `그림판에 <레코드>로/으로 <동작>` 형식")
+    );
 }
 
 #[test]
@@ -170,7 +175,10 @@ fn rejects_canvas_keyword_message_without_canvas_receiver() {
 #[test]
 fn rejects_named_call_statement_without_record_args() {
     let err = parse_source("탑옮기기를 원반수로 호출한다.").expect_err("parse should fail");
-    assert!(err.to_string().contains("이름 붙은 호출의 인수는 레코드여야 합니다"));
+    assert!(
+        err.to_string()
+            .contains("이름 붙은 호출의 인수는 레코드여야 합니다")
+    );
 }
 
 #[test]
@@ -256,8 +264,8 @@ fn parses_transform_call_in_binding() {
 
 #[test]
 fn parses_resultive_binding() {
-    let program = parse_source("원반은 시작탑에서 맨위 원반을 빼낸 것이다.")
-        .expect("parse should succeed");
+    let program =
+        parse_source("원반은 시작탑에서 맨위 원반을 꺼낸 것이다.").expect("parse should succeed");
 
     assert_eq!(
         program.statements,
@@ -266,9 +274,32 @@ fn parses_resultive_binding() {
             value: Expr::Resultive {
                 receiver: Box::new(Expr::Name("시작탑".into())),
                 role: "맨위 원반".into(),
-                verb: "빼낸".into(),
+                verb: "꺼낸".into(),
             },
         }]
+    );
+}
+
+#[test]
+fn parses_resultive_statement() {
+    let program = parse_source("시작탑에서 맨위 원반을 꺼낸다.").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Resultive {
+            receiver: Expr::Name("시작탑".into()),
+            role: "맨위 원반".into(),
+            verb: "꺼낸다".into(),
+        }]
+    );
+}
+
+#[test]
+fn rejects_resultive_expression_without_binding() {
+    let err = parse_source("시작탑에서 맨위 원반을 꺼낸 것이다.").expect_err("parse should fail");
+    assert!(
+        err.to_string()
+            .contains("`맨위 원반을` 뒤에는 현재 `꺼낸다`만 지원합니다.")
     );
 }
 

@@ -331,6 +331,19 @@ fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
                 span: cursor.next_statement_span(),
             }
         }
+        ast::Stmt::Resultive {
+            receiver,
+            role,
+            verb,
+        } => {
+            let receiver = lower_expr(receiver, cursor);
+            Stmt::Send {
+                receiver,
+                selector: lower_resultive_selector(role, verb),
+                args: Vec::new(),
+                span: cursor.next_statement_span(),
+            }
+        }
         ast::Stmt::NamedCall { callee, named_args } => {
             let callee = lower_expr(callee, cursor);
             let named_args = lower_expr(named_args, cursor);
@@ -453,10 +466,7 @@ fn lower_expr(expr: &ast::Expr, cursor: &mut LoweringCursor) -> Expr {
             let receiver = Box::new(lower_expr(receiver, cursor));
             Expr::Send {
                 receiver,
-                selector: SendSelector::Resultive {
-                    role: role.clone(),
-                    verb: verb.clone(),
-                },
+                selector: lower_resultive_selector(role, verb),
                 args: Vec::new(),
                 span: cursor.next_expr_span(),
             }
@@ -479,6 +489,19 @@ fn lower_expr(expr: &ast::Expr, cursor: &mut LoweringCursor) -> Expr {
                 span: cursor.next_expr_span(),
             }
         }
+    }
+}
+
+fn lower_resultive_selector(role: &str, verb: &str) -> SendSelector {
+    // Statement surface `꺼낸다` and expression surface `꺼낸` both lower to
+    // the same closed resultive selector.
+    let verb = match verb {
+        "꺼낸다" => "꺼낸",
+        other => other,
+    };
+    SendSelector::Resultive {
+        role: role.to_string(),
+        verb: verb.to_string(),
     }
 }
 

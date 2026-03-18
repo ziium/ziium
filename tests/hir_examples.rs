@@ -10,9 +10,7 @@ fn lowers_transform_call_to_send_expr() {
             assert_eq!(name, "문장");
             match value {
                 HirExpr::Send {
-                    receiver,
-                    selector,
-                    ..
+                    receiver, selector, ..
                 } => {
                     assert!(matches!(
                         receiver.as_ref(),
@@ -30,7 +28,7 @@ fn lowers_transform_call_to_send_expr() {
 #[test]
 fn lowers_property_and_resultive_to_send_exprs() {
     let program = parse_source_to_hir(
-        "길이는 과일들의 길이이다.\n원반은 시작탑에서 맨위 원반을 빼낸 것이다.",
+        "길이는 과일들의 길이이다.\n원반은 시작탑에서 맨위 원반을 꺼낸 것이다.",
     )
     .expect("hir lowering should succeed");
 
@@ -51,7 +49,7 @@ fn lowers_property_and_resultive_to_send_exprs() {
                     selector,
                     &HirSendSelector::Resultive {
                         role: "맨위 원반".into(),
-                        verb: "빼낸".into(),
+                        verb: "꺼낸".into(),
                     }
                 );
             }
@@ -63,7 +61,8 @@ fn lowers_property_and_resultive_to_send_exprs() {
 
 #[test]
 fn lowers_keyword_message_statement_to_send_stmt() {
-    let program = parse_source_to_hir("과일들에 \"감\" 추가.").expect("hir lowering should succeed");
+    let program =
+        parse_source_to_hir("과일들에 \"감\" 추가.").expect("hir lowering should succeed");
 
     match &program.statements[0] {
         HirStmt::Send {
@@ -76,6 +75,32 @@ fn lowers_keyword_message_statement_to_send_stmt() {
             assert_eq!(selector, &HirSendSelector::Keyword("추가".into()));
             assert_eq!(args.len(), 1);
             assert!(matches!(&args[0], HirExpr::String { value, .. } if value == "감"));
+        }
+        other => panic!("expected send statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_resultive_statement_to_send_stmt() {
+    let program =
+        parse_source_to_hir("시작탑에서 맨위 원반을 꺼낸다.").expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Send {
+            receiver,
+            selector,
+            args,
+            ..
+        } => {
+            assert!(matches!(receiver, HirExpr::Name { name, .. } if name == "시작탑"));
+            assert_eq!(
+                selector,
+                &HirSendSelector::Resultive {
+                    role: "맨위 원반".into(),
+                    verb: "꺼낸".into(),
+                }
+            );
+            assert!(args.is_empty());
         }
         other => panic!("expected send statement, got {other:?}"),
     }
@@ -109,16 +134,13 @@ fn lowers_word_binary_to_send_expr() {
 
 #[test]
 fn lowers_named_call_statement() {
-    let program = parse_source_to_hir(
-        "탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조, 목표 }로 호출한다.",
-    )
-    .expect("hir lowering should succeed");
+    let program =
+        parse_source_to_hir("탑옮기기를 { 원반수: 원반수 빼기 1, 시작, 보조, 목표 }로 호출한다.")
+            .expect("hir lowering should succeed");
 
     match &program.statements[0] {
         HirStmt::NamedCall {
-            callee,
-            named_args,
-            ..
+            callee, named_args, ..
         } => {
             assert!(matches!(callee, HirExpr::Name { name, .. } if name == "탑옮기기"));
             match named_args {
