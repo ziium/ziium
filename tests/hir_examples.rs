@@ -28,7 +28,7 @@ fn lowers_transform_call_to_send_expr() {
 #[test]
 fn lowers_property_and_resultive_to_send_exprs() {
     let program = parse_source_to_hir(
-        "길이는 과일들의 길이이다.\n원반은 시작탑에서 맨위 원반을 꺼낸 것이다.",
+        "길이는 과일들의 길이이다.\n원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.",
     )
     .expect("hir lowering should succeed");
 
@@ -44,11 +44,22 @@ fn lowers_property_and_resultive_to_send_exprs() {
 
     match &program.statements[1] {
         HirStmt::Bind { value, .. } => match value {
-            HirExpr::Send { selector, .. } => {
+            HirExpr::Send {
+                receiver, selector, ..
+            } => {
+                assert!(matches!(
+                    receiver.as_ref(),
+                    HirExpr::Send {
+                        receiver,
+                        selector: HirSendSelector::Property(property),
+                        ..
+                    } if matches!(receiver.as_ref(), HirExpr::Name { name, .. } if name == "시작탑")
+                        && property == "원반들"
+                ));
                 assert_eq!(
                     selector,
                     &HirSendSelector::Resultive {
-                        role: "맨위 원반".into(),
+                        role: "맨위 요소".into(),
                         verb: "꺼낸".into(),
                     }
                 );
@@ -82,8 +93,8 @@ fn lowers_keyword_message_statement_to_send_stmt() {
 
 #[test]
 fn lowers_resultive_statement_to_send_stmt() {
-    let program =
-        parse_source_to_hir("시작탑에서 맨위 원반을 꺼낸다.").expect("hir lowering should succeed");
+    let program = parse_source_to_hir("시작탑의 원반들에서 맨위 요소를 꺼낸다.")
+        .expect("hir lowering should succeed");
 
     match &program.statements[0] {
         HirStmt::Send {
@@ -92,11 +103,19 @@ fn lowers_resultive_statement_to_send_stmt() {
             args,
             ..
         } => {
-            assert!(matches!(receiver, HirExpr::Name { name, .. } if name == "시작탑"));
+            assert!(matches!(
+                receiver,
+                HirExpr::Send {
+                    receiver,
+                    selector: HirSendSelector::Property(property),
+                    ..
+                } if matches!(receiver.as_ref(), HirExpr::Name { name, .. } if name == "시작탑")
+                    && property == "원반들"
+            ));
             assert_eq!(
                 selector,
                 &HirSendSelector::Resultive {
-                    role: "맨위 원반".into(),
+                    role: "맨위 요소".into(),
                     verb: "꺼낸".into(),
                 }
             );

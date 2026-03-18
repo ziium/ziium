@@ -862,7 +862,7 @@ impl Interpreter {
     ) -> Result<Value, RuntimeError> {
         let selector = resultive_message_for(role, verb).ok_or_else(|| {
             RuntimeError::new(
-                "현재 결과 서술 문법은 `맨위 원반을 꺼낸 것이다` 또는 `맨위 원반을 꺼낸다`만 지원합니다.",
+                "현재 결과 서술 문법은 `맨위 요소를 꺼낸 것이다` 또는 `맨위 요소를 꺼낸다`만 지원합니다.",
             )
         })?;
         self.send_resultive_message(receiver, selector)
@@ -928,12 +928,12 @@ impl Interpreter {
         selector: ResultiveMessage,
     ) -> Result<Value, RuntimeError> {
         match (receiver, selector) {
-            (Value::List(items), ResultiveMessage::PopTopDisk) => items
+            (Value::List(items), ResultiveMessage::PopTopElement) => items
                 .borrow_mut()
                 .pop()
-                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 원반을 꺼낼 수 없습니다.")),
-            (_, ResultiveMessage::PopTopDisk) => Err(RuntimeError::new(
-                "`맨위 원반을 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
+                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 요소를 꺼낼 수 없습니다.")),
+            (_, ResultiveMessage::PopTopElement) => Err(RuntimeError::new(
+                "`맨위 요소를 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
             )),
         }
     }

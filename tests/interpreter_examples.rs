@@ -181,18 +181,18 @@ fn runs_pop_last_builtin_example() {
 
 #[test]
 fn runs_resultive_binding_example() {
-    let source = r#"시작탑은 [3, 2, 1]이다
-원반은 시작탑에서 맨위 원반을 꺼낸 것이다.
+    let source = r#"시작탑은 { 원반들: [3, 2, 1] }이다
+원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.
 원반을 출력한다.
-시작탑의 길이를 출력한다."#;
+시작탑의 원반들의 길이를 출력한다."#;
     assert_output(source, &["1", "2"]);
 }
 
 #[test]
 fn runs_resultive_statement_example() {
-    let source = r#"시작탑은 [3, 2, 1]이다
-시작탑에서 맨위 원반을 꺼낸다.
-시작탑의 길이를 출력한다."#;
+    let source = r#"시작탑은 { 원반들: [3, 2, 1] }이다
+시작탑의 원반들에서 맨위 요소를 꺼낸다.
+시작탑의 원반들의 길이를 출력한다."#;
     assert_output(source, &["2"]);
 }
 

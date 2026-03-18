@@ -235,9 +235,9 @@ impl Parser {
 
     fn parse_resultive_expression(&mut self, receiver: Expr) -> Result<Expr, ParseError> {
         let role = self
-            .parse_resultive_role("`에서` 뒤에는 현재 `맨위 원반을 꺼낸 것이다`만 지원합니다.")?;
+            .parse_resultive_role("`에서` 뒤에는 현재 `맨위 요소를 꺼낸 것이다`만 지원합니다.")?;
         let verb =
-            self.expect_ident_lexeme("꺼낸", "`맨위 원반을` 뒤에는 현재 `꺼낸`만 지원합니다.")?;
+            self.expect_ident_lexeme("꺼낸", "`맨위 요소를` 뒤에는 현재 `꺼낸`만 지원합니다.")?;
         let result_marker = self.expect(
             TokenKind::ResultMarker,
             "`꺼낸` 뒤에는 `것이다`가 와야 합니다.",
@@ -254,9 +254,9 @@ impl Parser {
 
     fn parse_resultive_statement(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
         let role =
-            self.parse_resultive_role("`에서` 뒤에는 현재 `맨위 원반을 꺼낸다`만 지원합니다.")?;
+            self.parse_resultive_role("`에서` 뒤에는 현재 `맨위 요소를 꺼낸다`만 지원합니다.")?;
         let verb =
-            self.expect_ident_lexeme("꺼낸다", "`맨위 원반을` 뒤에는 현재 `꺼낸다`만 지원합니다.")?;
+            self.expect_ident_lexeme("꺼낸다", "`맨위 요소를` 뒤에는 현재 `꺼낸다`만 지원합니다.")?;
         self.consume_optional_period();
         Ok(Stmt::Resultive {
             receiver,
@@ -268,10 +268,10 @@ impl Parser {
     fn parse_resultive_role(&mut self, from_error: &str) -> Result<String, ParseError> {
         self.expect_ident_lexeme("맨위", from_error)?;
         let role_noun =
-            self.expect_ident_lexeme("원반", "`맨위` 뒤에는 현재 `원반`이 와야 합니다.")?;
+            self.expect_ident_lexeme("요소", "`맨위` 뒤에는 현재 `요소`가 와야 합니다.")?;
         self.expect(
             TokenKind::Object,
-            "`맨위 원반` 뒤에는 `을` 또는 `를`이 와야 합니다.",
+            "`맨위 요소` 뒤에는 `을` 또는 `를`이 와야 합니다.",
         )?;
         Ok(format!("맨위 {}", role_noun.lexeme))
     }

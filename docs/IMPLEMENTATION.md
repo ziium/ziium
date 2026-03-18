@@ -38,7 +38,7 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 
 - unary message: `길이`, `제곱`
 - keyword message: `추가`, `지우기`, `점찍기`, `사각형채우기`, `글자쓰기`
-- resultive message: `맨위 원반을 꺼낸` / `맨위 원반을 꺼낸다`
+- resultive message: `맨위 요소를 꺼낸` / `맨위 요소를 꺼낸다`
 
 즉 현재 구현은 `surface AST + send-centered HIR`의 2단 구조다. parser는 한국어 문장형 표면을 보존하고, interpreter는 HIR의 selector 기반 메시지 모델만 실행한다.
 
