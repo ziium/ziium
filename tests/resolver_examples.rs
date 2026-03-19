@@ -25,6 +25,18 @@ fn reports_assign_to_undefined_name_before_runtime() {
 }
 
 #[test]
+fn rejects_undefined_transform_callee_before_runtime() {
+    let err = run_source("문장은 \"지음\"으로 인사만들기이다").expect_err("program should fail");
+    assert!(matches!(
+        err,
+        RunError::Frontend(FrontendError::Resolve(ResolveError { .. }))
+    ));
+    let message = err.to_string();
+    assert!(message.contains("1번째 줄 9번째 열"));
+    assert!(message.contains("아직 정의되지 않았습니다"));
+}
+
+#[test]
 fn reports_return_outside_function_before_runtime() {
     let err = run_source("3을 돌려준다").expect_err("program should fail");
     assert!(matches!(

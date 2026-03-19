@@ -1,5 +1,9 @@
 use crate::ast;
 use crate::error::FrontendError;
+use crate::message::{
+    KeywordMessage, ResultiveMessage, WordMessage, keyword_message_for_selector,
+    resultive_message_for,
+};
 use crate::parser::ParseMetadata;
 use crate::parser::parse_source_with_metadata;
 use crate::token::Span;
@@ -144,9 +148,9 @@ pub struct RecordEntry {
 pub enum SendSelector {
     Property(String),
     Transform(String),
-    Word(String),
-    Keyword(String),
-    Resultive { role: String, verb: String },
+    Word(WordMessage),
+    Keyword(KeywordMessage),
+    Resultive(ResultiveMessage),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -324,9 +328,11 @@ fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
         } => {
             let receiver = lower_expr(receiver, cursor);
             let arg = lower_expr(arg, cursor);
+            let selector = keyword_message_for_selector(selector)
+                .expect("parser should only lower supported keyword messages");
             Stmt::Send {
                 receiver,
-                selector: SendSelector::Keyword(selector.clone()),
+                selector: SendSelector::Keyword(selector),
                 args: vec![arg],
                 span: cursor.next_statement_span(),
             }
@@ -428,7 +434,7 @@ fn lower_expr(expr: &ast::Expr, cursor: &mut LoweringCursor) -> Expr {
             match form {
                 ast::BinarySurface::Word => Expr::Send {
                     receiver: left,
-                    selector: SendSelector::Word(word_selector(*op).to_string()),
+                    selector: SendSelector::Word(word_selector(*op)),
                     args: vec![*right],
                     span,
                 },
@@ -499,10 +505,9 @@ fn lower_resultive_selector(role: &str, verb: &str) -> SendSelector {
         "꺼낸다" => "꺼낸",
         other => other,
     };
-    SendSelector::Resultive {
-        role: role.to_string(),
-        verb: verb.to_string(),
-    }
+    let selector =
+        resultive_message_for(role, verb).expect("parser should only lower supported resultives");
+    SendSelector::Resultive(selector)
 }
 
 impl LoweringCursor {
@@ -569,12 +574,12 @@ impl LoweringCursor {
     }
 }
 
-fn word_selector(op: ast::BinaryOp) -> &'static str {
+fn word_selector(op: ast::BinaryOp) -> WordMessage {
     match op {
-        ast::BinaryOp::Add => "더하기",
-        ast::BinaryOp::Subtract => "빼기",
-        ast::BinaryOp::Multiply => "곱하기",
-        ast::BinaryOp::Divide => "나누기",
+        ast::BinaryOp::Add => WordMessage::Add,
+        ast::BinaryOp::Subtract => WordMessage::Subtract,
+        ast::BinaryOp::Multiply => WordMessage::Multiply,
+        ast::BinaryOp::Divide => WordMessage::Divide,
         _ => panic!("word selector requested for non-word binary op"),
     }
 }

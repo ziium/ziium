@@ -111,16 +111,12 @@ impl Resolver {
             }
             | Stmt::Expr { expr: value, .. } => self.resolve_expr(value),
             Stmt::NamedCall {
-                callee,
-                named_args,
-                ..
+                callee, named_args, ..
             } => {
                 self.resolve_expr(callee)?;
                 self.resolve_expr(named_args)
             }
-            Stmt::Send {
-                receiver, args, ..
-            } => {
+            Stmt::Send { receiver, args, .. } => {
                 self.resolve_expr(receiver)?;
                 for arg in args {
                     self.resolve_expr(arg)?;
@@ -128,7 +124,9 @@ impl Resolver {
                 Ok(())
             }
             Stmt::Return {
-                value, keyword_span, ..
+                value,
+                keyword_span,
+                ..
             } => {
                 if self.function_depth == 0 {
                     return Err(ResolveError::with_span(

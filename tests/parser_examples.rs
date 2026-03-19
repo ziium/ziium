@@ -263,6 +263,15 @@ fn parses_transform_call_in_binding() {
 }
 
 #[test]
+fn rejects_transform_call_without_identifier_callee() {
+    let err = parse_source("문장은 \"지음\"으로 3이다").expect_err("parse should fail");
+    assert!(
+        err.to_string()
+            .contains("`로` 또는 `으로` 뒤에는 함수 이름이 필요합니다.")
+    );
+}
+
+#[test]
 fn parses_resultive_binding() {
     let program = parse_source("원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
         .expect("parse should succeed");
@@ -277,6 +286,42 @@ fn parses_resultive_binding() {
                     name: "원반들".into(),
                 }),
                 role: "맨위 요소".into(),
+                verb: "꺼낸".into(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn parses_back_resultive_binding() {
+    let program =
+        parse_source("마지막은 목록에서 맨뒤 요소를 꺼낸 것이다.").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "마지막".into(),
+            value: Expr::Resultive {
+                receiver: Box::new(Expr::Name("목록".into())),
+                role: "맨뒤 요소".into(),
+                verb: "꺼낸".into(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn parses_front_resultive_binding() {
+    let program =
+        parse_source("처음은 목록에서 맨앞 요소를 꺼낸 것이다.").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "처음".into(),
+            value: Expr::Resultive {
+                receiver: Box::new(Expr::Name("목록".into())),
+                role: "맨앞 요소".into(),
                 verb: "꺼낸".into(),
             },
         }]
@@ -302,6 +347,34 @@ fn parses_resultive_statement() {
 }
 
 #[test]
+fn parses_back_resultive_statement() {
+    let program = parse_source("목록에서 맨뒤 요소를 꺼낸다.").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Resultive {
+            receiver: Expr::Name("목록".into()),
+            role: "맨뒤 요소".into(),
+            verb: "꺼낸다".into(),
+        }]
+    );
+}
+
+#[test]
+fn parses_front_resultive_statement() {
+    let program = parse_source("목록에서 맨앞 요소를 꺼낸다.").expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Resultive {
+            receiver: Expr::Name("목록".into()),
+            role: "맨앞 요소".into(),
+            verb: "꺼낸다".into(),
+        }]
+    );
+}
+
+#[test]
 fn rejects_resultive_expression_without_binding() {
     let err = parse_source("시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
         .expect_err("parse should fail");
@@ -309,6 +382,14 @@ fn rejects_resultive_expression_without_binding() {
         err.to_string()
             .contains("`맨위 요소를` 뒤에는 현재 `꺼낸다`만 지원합니다.")
     );
+}
+
+#[test]
+fn rejects_unsupported_bottom_resultive_statement() {
+    let err = parse_source("목록에서 맨밑 요소를 꺼낸다.").expect_err("parse should fail");
+    assert!(err.to_string().contains(
+        "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를` 또는 `맨앞 요소를 꺼낸다`만 지원합니다."
+    ));
 }
 
 #[test]
@@ -326,6 +407,33 @@ fn parses_property_print_statement() {
                 name: "도시".into(),
             },
         }]
+    );
+}
+
+#[test]
+fn parses_builtin_like_property_names_as_plain_properties() {
+    let source = r#"길이는 상자의 길이이다
+제곱값은 숫자의 제곱이다"#;
+    let program = parse_source(source).expect("parse should succeed");
+
+    assert_eq!(
+        program.statements,
+        vec![
+            Stmt::Bind {
+                name: "길이".into(),
+                value: Expr::Property {
+                    base: Box::new(Expr::Name("상자".into())),
+                    name: "길이".into(),
+                },
+            },
+            Stmt::Bind {
+                name: "제곱값".into(),
+                value: Expr::Property {
+                    base: Box::new(Expr::Name("숫자".into())),
+                    name: "제곱".into(),
+                },
+            },
+        ]
     );
 }
 

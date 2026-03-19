@@ -103,6 +103,17 @@ fn runs_transform_call_example() {
 }
 
 #[test]
+fn reports_transform_call_arity_mismatch_for_non_unary_function() {
+    let source = r#"합치기 함수는 왼쪽, 오른쪽을 받아
+  왼쪽 + 오른쪽을 돌려준다
+
+결과는 "지음"으로 합치기이다"#;
+    let err = run_source(source).expect_err("program should fail");
+    let message = err.to_string();
+    assert!(message.contains("함수 인수 개수가 맞지 않습니다. 기대: 2, 실제: 1"));
+}
+
+#[test]
 fn runs_named_call_statement_example() {
     let source = r#"탑옮기기 함수는 원반수, 시작, 보조, 목표를 받아
   시작 + " -> " + 목표를 출력한다
@@ -162,6 +173,27 @@ fn runs_string_length_property_example() {
 }
 
 #[test]
+fn record_key_named_length_wins_over_builtin_length_property() {
+    let source = r#"상자는 { 길이: 99, 폭: 3 }이다
+상자의 길이를 출력한다"#;
+    assert_output(source, &["99"]);
+}
+
+#[test]
+fn record_without_length_key_falls_back_to_record_length_property() {
+    let source = r#"상자는 { 폭: 3, 높이: 4 }이다
+상자의 길이를 출력한다"#;
+    assert_output(source, &["2"]);
+}
+
+#[test]
+fn record_key_named_square_wins_over_builtin_square_property() {
+    let source = r#"수상자는 { 제곱: 7 }이다
+수상자의 제곱을 출력한다"#;
+    assert_output(source, &["7"]);
+}
+
+#[test]
 fn runs_builtin_push_and_length_example() {
     let source = r#"숫자들은 [1, 2]이다
 추가(숫자들, 3)
@@ -189,10 +221,44 @@ fn runs_resultive_binding_example() {
 }
 
 #[test]
+fn runs_back_resultive_binding_example() {
+    let source = r#"목록은 [1, 2, 3]이다
+마지막은 목록에서 맨뒤 요소를 꺼낸 것이다.
+마지막을 출력한다.
+목록의 길이를 출력한다."#;
+    assert_output(source, &["3", "2"]);
+}
+
+#[test]
+fn runs_front_resultive_binding_example() {
+    let source = r#"목록은 [1, 2, 3]이다
+처음은 목록에서 맨앞 요소를 꺼낸 것이다.
+처음을 출력한다.
+목록의 길이를 출력한다."#;
+    assert_output(source, &["1", "2"]);
+}
+
+#[test]
 fn runs_resultive_statement_example() {
     let source = r#"시작탑은 { 원반들: [3, 2, 1] }이다
 시작탑의 원반들에서 맨위 요소를 꺼낸다.
 시작탑의 원반들의 길이를 출력한다."#;
+    assert_output(source, &["2"]);
+}
+
+#[test]
+fn runs_back_resultive_statement_example() {
+    let source = r#"목록은 [1, 2, 3]이다
+목록에서 맨뒤 요소를 꺼낸다.
+목록의 길이를 출력한다."#;
+    assert_output(source, &["2"]);
+}
+
+#[test]
+fn runs_front_resultive_statement_example() {
+    let source = r#"목록은 [1, 2, 3]이다
+목록에서 맨앞 요소를 꺼낸다.
+목록의 길이를 출력한다."#;
     assert_output(source, &["2"]);
 }
 
