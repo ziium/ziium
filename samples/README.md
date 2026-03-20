@@ -23,3 +23,4 @@ cargo run -- samples/00_hello_everyone.zm
 - `10_hanoi.zm`: 재귀 함수와 더 긴 실행 흐름
 - `11_hanoi_ziium_style.zm`: `의`, `으로`, 단어 연산을 섞은 더 문장형 예제
 - `12_canvas_hanoi.zm`: `그림판에 { ... }으로/로 ...`를 직접 호출하는 캔버스 하노이탑
+- `13_xor_neural_network.zm`: XOR를 학습하고 테스트하는 단순한 신경망
