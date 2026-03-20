@@ -1,4 +1,7 @@
-use ziium::{HirExpr, HirSendSelector, HirStmt, parse_source_to_hir};
+use ziium::{
+    HirExpr, HirSendSelector, HirStmt, KeywordMessage, ResultiveMessage, WordMessage,
+    parse_source_to_hir,
+};
 
 #[test]
 fn lowers_transform_call_to_send_expr() {
@@ -58,13 +61,80 @@ fn lowers_property_and_resultive_to_send_exprs() {
                 ));
                 assert_eq!(
                     selector,
-                    &HirSendSelector::Resultive {
-                        role: "맨위 요소".into(),
-                        verb: "꺼낸".into(),
-                    }
+                    &HirSendSelector::Resultive(ResultiveMessage::PopTopElement)
                 );
             }
             other => panic!("expected resultive send, got {other:?}"),
+        },
+        other => panic!("expected bind statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_back_resultive_to_send_expr() {
+    let program = parse_source_to_hir("마지막은 목록에서 맨뒤 요소를 꺼낸 것이다.")
+        .expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Bind { value, .. } => match value {
+            HirExpr::Send {
+                receiver, selector, ..
+            } => {
+                assert!(matches!(receiver.as_ref(), HirExpr::Name { name, .. } if name == "목록"));
+                assert_eq!(
+                    selector,
+                    &HirSendSelector::Resultive(ResultiveMessage::PopBackElement)
+                );
+            }
+            other => panic!("expected resultive send, got {other:?}"),
+        },
+        other => panic!("expected bind statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_front_resultive_to_send_expr() {
+    let program = parse_source_to_hir("처음은 목록에서 맨앞 요소를 꺼낸 것이다.")
+        .expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Bind { value, .. } => match value {
+            HirExpr::Send {
+                receiver, selector, ..
+            } => {
+                assert!(matches!(receiver.as_ref(), HirExpr::Name { name, .. } if name == "목록"));
+                assert_eq!(
+                    selector,
+                    &HirSendSelector::Resultive(ResultiveMessage::PopFrontElement)
+                );
+            }
+            other => panic!("expected resultive send, got {other:?}"),
+        },
+        other => panic!("expected bind statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_builtin_like_property_names_to_property_selectors() {
+    let program = parse_source_to_hir("길이는 상자의 길이이다.\n제곱값은 숫자의 제곱이다.")
+        .expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Bind { value, .. } => match value {
+            HirExpr::Send { selector, .. } => {
+                assert_eq!(selector, &HirSendSelector::Property("길이".into()));
+            }
+            other => panic!("expected property send, got {other:?}"),
+        },
+        other => panic!("expected bind statement, got {other:?}"),
+    }
+
+    match &program.statements[1] {
+        HirStmt::Bind { value, .. } => match value {
+            HirExpr::Send { selector, .. } => {
+                assert_eq!(selector, &HirSendSelector::Property("제곱".into()));
+            }
+            other => panic!("expected property send, got {other:?}"),
         },
         other => panic!("expected bind statement, got {other:?}"),
     }
@@ -83,7 +153,7 @@ fn lowers_keyword_message_statement_to_send_stmt() {
             ..
         } => {
             assert!(matches!(receiver, HirExpr::Name { name, .. } if name == "과일들"));
-            assert_eq!(selector, &HirSendSelector::Keyword("추가".into()));
+            assert_eq!(selector, &HirSendSelector::Keyword(KeywordMessage::Push));
             assert_eq!(args.len(), 1);
             assert!(matches!(&args[0], HirExpr::String { value, .. } if value == "감"));
         }
@@ -114,10 +184,53 @@ fn lowers_resultive_statement_to_send_stmt() {
             ));
             assert_eq!(
                 selector,
-                &HirSendSelector::Resultive {
-                    role: "맨위 요소".into(),
-                    verb: "꺼낸".into(),
-                }
+                &HirSendSelector::Resultive(ResultiveMessage::PopTopElement)
+            );
+            assert!(args.is_empty());
+        }
+        other => panic!("expected send statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_back_resultive_statement_to_send_stmt() {
+    let program =
+        parse_source_to_hir("목록에서 맨뒤 요소를 꺼낸다.").expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Send {
+            receiver,
+            selector,
+            args,
+            ..
+        } => {
+            assert!(matches!(receiver, HirExpr::Name { name, .. } if name == "목록"));
+            assert_eq!(
+                selector,
+                &HirSendSelector::Resultive(ResultiveMessage::PopBackElement)
+            );
+            assert!(args.is_empty());
+        }
+        other => panic!("expected send statement, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_front_resultive_statement_to_send_stmt() {
+    let program =
+        parse_source_to_hir("목록에서 맨앞 요소를 꺼낸다.").expect("hir lowering should succeed");
+
+    match &program.statements[0] {
+        HirStmt::Send {
+            receiver,
+            selector,
+            args,
+            ..
+        } => {
+            assert!(matches!(receiver, HirExpr::Name { name, .. } if name == "목록"));
+            assert_eq!(
+                selector,
+                &HirSendSelector::Resultive(ResultiveMessage::PopFrontElement)
             );
             assert!(args.is_empty());
         }
@@ -141,7 +254,7 @@ fn lowers_word_binary_to_send_expr() {
                     receiver.as_ref(),
                     HirExpr::Int { raw, .. } if raw == "7"
                 ));
-                assert_eq!(selector, &HirSendSelector::Word("더하기".into()));
+                assert_eq!(selector, &HirSendSelector::Word(WordMessage::Add));
                 assert_eq!(args.len(), 1);
                 assert!(matches!(&args[0], HirExpr::Int { raw, .. } if raw == "8"));
             }
@@ -169,9 +282,9 @@ fn lowers_named_call_statement() {
                     assert!(matches!(
                         entries[0].value,
                         HirExpr::Send {
-                            selector: HirSendSelector::Word(ref name),
+                            selector: HirSendSelector::Word(WordMessage::Subtract),
                             ..
-                        } if name == "빼기"
+                        }
                     ));
                     assert_eq!(entries[1].key, "시작");
                     assert_eq!(entries[2].key, "보조");

@@ -38,9 +38,16 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 
 - unary message: `길이`, `제곱`
 - keyword message: `추가`, `지우기`, `점찍기`, `사각형채우기`, `글자쓰기`
-- resultive message: `맨위 요소를 꺼낸` / `맨위 요소를 꺼낸다`
+- resultive message: `맨위 요소를 꺼낸`, `맨뒤 요소를 꺼낸`, `맨앞 요소를 꺼낸` / `...꺼낸다`
 
 즉 현재 구현은 `surface AST + send-centered HIR`의 2단 구조다. parser는 한국어 문장형 표면을 보존하고, interpreter는 HIR의 selector 기반 메시지 모델만 실행한다.
+
+HIR의 `SendSelector`는 현재 두 층으로 나뉜다.
+
+- 열린 surface selector: `Property(String)`, `Transform(String)`
+- 닫힌 built-in selector: `Word(WordMessage)`, `Keyword(KeywordMessage)`, `Resultive(ResultiveMessage)`
+
+즉 property-first parsing 원칙은 여전히 surface string을 유지하되, 현재 닫힌 built-in 메시지 집합은 HIR에서 더 이상 임의 문자열로 들고 있지 않는다.
 
 현재 연구 원칙은 아래와 같다.
 
@@ -142,10 +149,10 @@ cargo test
 
 ## 현재 우선순위
 
-1. `SendSelector`를 현재 닫힌 메시지 집합과 조사 프레임 경계에 맞게 더 명확히 정리
-2. `의` 프레임의 property-first parsing과 built-in noun fallback 규칙을 lowering/runtime 기준으로 고정
-3. `으로` 프레임의 unary transform 제한을 문서와 테스트로 더 분명히 고정
-4. 상태 변경 및 결과 서술 프레임의 닫힌 범위를 유지하면서 회귀 테스트를 보강
+1. 상태 변경 및 결과 서술 프레임의 닫힌 범위를 유지하면서 회귀 테스트를 계속 보강
+2. `맨밑 요소`를 같은 축으로 열지, 더 오래 보류할지 결정
+3. 위치 명시형 `넣기`와 비파괴 `가져오기`의 경계를 계속 문서로만 좁혀 두기
+4. unary transform frame을 실제 변환/생성 계열 capability로 더 좁힐지 결정
 
 ## 중장기 방향
 

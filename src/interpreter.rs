@@ -2,8 +2,7 @@ use crate::ast::{BinaryOp, UnaryOp};
 use crate::error::{RunError, RuntimeError};
 use crate::hir::{self, Expr, Program, SendSelector, Stmt};
 use crate::message::{
-    KeywordMessage, ResultiveMessage, UnaryMessage, keyword_message_for_selector,
-    resultive_message_for, unary_message_for_property,
+    KeywordMessage, ResultiveMessage, UnaryMessage, WordMessage, unary_message_for_property,
 };
 use crate::parser::parse_source_with_metadata;
 use crate::resolver::ResolverSession;
@@ -745,19 +744,15 @@ impl Interpreter {
     fn eval_word_message(
         &self,
         receiver: Value,
-        selector: &str,
+        selector: WordMessage,
         args: Vec<Value>,
     ) -> Result<Value, RuntimeError> {
-        let [arg] = expect_arity::<1>(selector, args)?;
+        let [arg] = expect_arity::<1>(selector.name(), args)?;
         match selector {
-            "더하기" => self.eval_binary(receiver, BinaryOp::Add, arg),
-            "빼기" => self.eval_binary(receiver, BinaryOp::Subtract, arg),
-            "곱하기" => self.eval_binary(receiver, BinaryOp::Multiply, arg),
-            "나누기" => self.eval_binary(receiver, BinaryOp::Divide, arg),
-            _ => Err(RuntimeError::new(format!(
-                "`{}` 단어 메시지는 아직 지원하지 않습니다.",
-                selector
-            ))),
+            WordMessage::Add => self.eval_binary(receiver, BinaryOp::Add, arg),
+            WordMessage::Subtract => self.eval_binary(receiver, BinaryOp::Subtract, arg),
+            WordMessage::Multiply => self.eval_binary(receiver, BinaryOp::Multiply, arg),
+            WordMessage::Divide => self.eval_binary(receiver, BinaryOp::Divide, arg),
         }
     }
 
@@ -786,14 +781,14 @@ impl Interpreter {
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
                 self.call_value(callee, vec![receiver], expr_span)
             }
-            SendSelector::Word(selector) => self.eval_word_message(receiver, selector, args),
-            SendSelector::Resultive { role, verb } => {
+            SendSelector::Word(selector) => self.eval_word_message(receiver, *selector, args),
+            SendSelector::Resultive(selector) => {
                 if !args.is_empty() {
                     return Err(RuntimeError::new(
                         "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
                     ));
                 }
-                self.eval_resultive(receiver, role, verb)
+                self.send_resultive_message(receiver, *selector)
             }
             SendSelector::Keyword(_) => Err(RuntimeError::new(
                 "키워드 메시지는 표현식 자리에서 사용할 수 없습니다.",
@@ -808,16 +803,14 @@ impl Interpreter {
         args: Vec<Value>,
     ) -> Result<(), RuntimeError> {
         match selector {
-            SendSelector::Keyword(selector) => {
-                self.execute_keyword_message(receiver, selector, args)
-            }
-            SendSelector::Resultive { role, verb } => {
+            SendSelector::Keyword(selector) => self.send_keyword_message(receiver, *selector, args),
+            SendSelector::Resultive(selector) => {
                 if !args.is_empty() {
                     return Err(RuntimeError::new(
                         "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
                     ));
                 }
-                self.eval_resultive(receiver, role, verb).map(|_| ())
+                self.send_resultive_message(receiver, *selector).map(|_| ())
             }
             _ => Err(RuntimeError::new(
                 "이 메시지는 문장 자리에서 사용할 수 없습니다.",
@@ -852,35 +845,6 @@ impl Interpreter {
                 }
             }
         }
-    }
-
-    fn eval_resultive(
-        &self,
-        receiver: Value,
-        role: &str,
-        verb: &str,
-    ) -> Result<Value, RuntimeError> {
-        let selector = resultive_message_for(role, verb).ok_or_else(|| {
-            RuntimeError::new(
-                "현재 결과 서술 문법은 `맨위 요소를 꺼낸 것이다` 또는 `맨위 요소를 꺼낸다`만 지원합니다.",
-            )
-        })?;
-        self.send_resultive_message(receiver, selector)
-    }
-
-    fn execute_keyword_message(
-        &mut self,
-        receiver: Value,
-        selector: &str,
-        args: Vec<Value>,
-    ) -> Result<(), RuntimeError> {
-        let selector = keyword_message_for_selector(selector).ok_or_else(|| {
-            RuntimeError::new(format!(
-                "`{}` 키워드 메시지는 아직 지원하지 않습니다.",
-                selector
-            ))
-        })?;
-        self.send_keyword_message(receiver, selector, args)
     }
 
     fn send_unary_message(
@@ -927,14 +891,36 @@ impl Interpreter {
         receiver: Value,
         selector: ResultiveMessage,
     ) -> Result<Value, RuntimeError> {
-        match (receiver, selector) {
-            (Value::List(items), ResultiveMessage::PopTopElement) => items
-                .borrow_mut()
-                .pop()
-                .ok_or_else(|| RuntimeError::new("빈 목록에서는 맨위 요소를 꺼낼 수 없습니다.")),
-            (_, ResultiveMessage::PopTopElement) => Err(RuntimeError::new(
-                "`맨위 요소를 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
-            )),
+        match selector {
+            ResultiveMessage::PopTopElement | ResultiveMessage::PopBackElement => match receiver {
+                Value::List(items) => items.borrow_mut().pop().ok_or_else(|| {
+                    RuntimeError::new(format!(
+                        "빈 목록에서는 {}를 꺼낼 수 없습니다.",
+                        selector.role()
+                    ))
+                }),
+                _ => Err(RuntimeError::new(format!(
+                    "`{}를 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
+                    selector.role()
+                ))),
+            },
+            ResultiveMessage::PopFrontElement => match receiver {
+                Value::List(items) => {
+                    let mut items = items.borrow_mut();
+                    if items.is_empty() {
+                        Err(RuntimeError::new(format!(
+                            "빈 목록에서는 {}를 꺼낼 수 없습니다.",
+                            selector.role()
+                        )))
+                    } else {
+                        Ok(items.remove(0))
+                    }
+                }
+                _ => Err(RuntimeError::new(format!(
+                    "`{}를 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
+                    selector.role()
+                ))),
+            },
         }
     }
 
@@ -977,14 +963,7 @@ impl Interpreter {
         selector: KeywordMessage,
         arg: Value,
     ) -> Result<(), RuntimeError> {
-        let selector_name = match selector {
-            KeywordMessage::CanvasClear => "지우기",
-            KeywordMessage::CanvasDot => "점찍기",
-            KeywordMessage::CanvasFillRect => "사각형채우기",
-            KeywordMessage::CanvasFillText => "글자쓰기",
-            KeywordMessage::Push => "추가",
-        };
-        let record = expect_record(selector_name, arg)?;
+        let record = expect_record(selector.name(), arg)?;
         match selector {
             KeywordMessage::CanvasClear => {
                 let background = expect_string_field(&record, &["배경색", "색"])?;
