@@ -202,6 +202,10 @@ impl InterpreterSession {
     ) {
         self.interpreter.choose_fn = Some(Box::new(f));
     }
+
+    pub fn drain_events(&mut self) -> Vec<ExecutionEvent> {
+        std::mem::take(&mut self.interpreter.events)
+    }
 }
 
 impl Default for InterpreterSession {
