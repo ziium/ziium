@@ -57,6 +57,9 @@ fn split_attached_statement_head(
             _ if line_has_assignment_tail(tokens, index + 1) => Some((base, suffix_kind, suffix)),
             _ => None,
         },
+        TokenKind::Subject if line_has_comparison_tail(tokens, index + 1) => {
+            Some((base, suffix_kind, suffix))
+        }
         TokenKind::Locative if line_has_keyword_message_tail(tokens, index + 1) => {
             Some((base, suffix_kind, suffix))
         }
@@ -68,6 +71,8 @@ fn split_attached_statement_suffix(lexeme: &str) -> Option<(String, TokenKind, &
     for (suffix, kind) in [
         ("을", TokenKind::Object),
         ("를", TokenKind::Object),
+        ("이", TokenKind::Subject),
+        ("가", TokenKind::Subject),
         ("에", TokenKind::Locative),
     ] {
         if let Some(base) = lexeme.strip_suffix(suffix) {
@@ -99,6 +104,32 @@ fn line_has_assignment_tail(tokens: &[Token], mut index: usize) -> bool {
                 return tokens
                     .get(index + 1)
                     .is_some_and(|next| next.kind == TokenKind::Change);
+            }
+            TokenKind::Amount => {
+                return tokens.get(index + 1).is_some_and(|next| {
+                    next.kind == TokenKind::Ident
+                        && matches!(next.lexeme.as_str(), "줄인다" | "늘린다")
+                });
+            }
+            _ => index += 1,
+        }
+    }
+
+    false
+}
+
+fn line_has_comparison_tail(tokens: &[Token], mut index: usize) -> bool {
+    while let Some(token) = tokens.get(index) {
+        match token.kind {
+            TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
+            TokenKind::Than => {
+                return tokens.get(index + 1).is_some_and(|next| {
+                    next.kind == TokenKind::Ident
+                        && matches!(
+                            next.lexeme.as_str(),
+                            "크면" | "작으면" | "같으면" | "다르면"
+                        )
+                });
             }
             _ => index += 1,
         }

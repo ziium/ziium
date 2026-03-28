@@ -510,6 +510,8 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
         "에" => Some(TokenKind::Locative),
         "에서" => Some(TokenKind::From),
         "로" | "으로" => Some(TokenKind::Direction),
+        "보다" => Some(TokenKind::Than),
+        "만큼" => Some(TokenKind::Amount),
         _ => None,
     }
 }
@@ -520,7 +522,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
         ("이다", TokenKind::Copula),
         ("인", TokenKind::In),
     ];
-    const PARTICLES: [(&str, TokenKind); 11] = [
+    const PARTICLES: [(&str, TokenKind); 13] = [
+        ("만큼", TokenKind::Amount),
+        ("보다", TokenKind::Than),
         ("으로", TokenKind::Direction),
         ("에서", TokenKind::From),
         ("은", TokenKind::Topic),
@@ -560,7 +564,7 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 // are not incorrectly normalized into `나` + `이`. Parser-side helpers handle
 // a few high-value attached forms such as one-syllable print/assign targets.
 fn should_split_word(base: &str, suffix: &str) -> bool {
-    if matches!(suffix, "으로" | "은" | "는" | "이다" | "이면" | "인") {
+    if matches!(suffix, "으로" | "은" | "는" | "이다" | "이면" | "인" | "보다" | "만큼") {
         return true;
     }
 

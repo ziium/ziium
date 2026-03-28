@@ -111,13 +111,24 @@ pub enum CanvasCommand {
     },
 }
 
-#[derive(Debug)]
 struct Interpreter {
     globals: EnvRef,
     output: Vec<String>,
     current_canvas_commands: Vec<CanvasCommand>,
     canvas_frames: Vec<CanvasFrame>,
     events: Vec<ExecutionEvent>,
+    choose_fn: Option<Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>>,
+}
+
+impl std::fmt::Debug for Interpreter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Interpreter")
+            .field("globals", &self.globals)
+            .field("output", &self.output)
+            .field("events", &self.events)
+            .field("choose_fn", &self.choose_fn.as_ref().map(|_| "..."))
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -184,6 +195,13 @@ impl InterpreterSession {
             .run_program(&hir_program)
             .map_err(RunError::from)
     }
+
+    pub fn set_choose_fn(
+        &mut self,
+        f: impl Fn(&[Value]) -> Result<Value, RuntimeError> + 'static,
+    ) {
+        self.interpreter.choose_fn = Some(Box::new(f));
+    }
 }
 
 impl Default for InterpreterSession {
@@ -203,6 +221,7 @@ impl Interpreter {
             current_canvas_commands: Vec::new(),
             canvas_frames: Vec::new(),
             events: Vec::new(),
+            choose_fn: None,
         }
     }
 
@@ -920,6 +939,24 @@ impl Interpreter {
                     "`{}를 꺼낸` 결과 서술은 목록에만 사용할 수 있습니다.",
                     selector.role()
                 ))),
+            },
+            ResultiveMessage::Choose => match receiver {
+                Value::List(items) => {
+                    let cloned: Vec<Value> = items.borrow().clone();
+                    if cloned.is_empty() {
+                        return Err(RuntimeError::new(
+                            "빈 목록에서는 고를 수 없습니다.",
+                        ));
+                    }
+                    if let Some(ref choose) = self.choose_fn {
+                        choose(&cloned)
+                    } else {
+                        Ok(cloned[0].clone())
+                    }
+                }
+                _ => Err(RuntimeError::new(
+                    "`고른` 결과 서술은 목록에만 사용할 수 있습니다.",
+                )),
             },
         }
     }

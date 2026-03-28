@@ -388,7 +388,7 @@ fn rejects_resultive_expression_without_binding() {
 fn rejects_unsupported_bottom_resultive_statement() {
     let err = parse_source("목록에서 맨밑 요소를 꺼낸다.").expect_err("parse should fail");
     assert!(err.to_string().contains(
-        "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를` 또는 `맨앞 요소를 꺼낸다`만 지원합니다."
+        "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를`, `맨앞 요소를 꺼낸다` 또는 `고른다`만 지원합니다."
     ));
 }
 

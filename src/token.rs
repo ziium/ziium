@@ -75,6 +75,8 @@ pub enum TokenKind {
     From,
     Direction,
     ResultMarker,
+    Than,
+    Amount,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

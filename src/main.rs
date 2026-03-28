@@ -9,8 +9,42 @@ use std::time::Duration;
 use unicode_width::UnicodeWidthStr;
 use ziium::{
     FrontendError, InterpreterSession, LexError, ParseError, ResolveError, RunError, RuntimeError,
-    Span, Token, TokenKind, lex, parse_source, parse_source_to_hir, run_source,
+    Span, Token, TokenKind, Value, lex, parse_source, parse_source_to_hir,
 };
+
+fn cli_choose(options: &[Value]) -> Result<Value, RuntimeError> {
+    let rendered: Vec<String> = options.iter().map(|v| v.render()).collect();
+    let mut stderr = io::stderr().lock();
+    for (i, text) in rendered.iter().enumerate() {
+        let _ = writeln!(stderr, "  {}) {text}", i + 1);
+    }
+    let _ = write!(stderr, "선택> ");
+    let _ = stderr.flush();
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .map_err(|_| RuntimeError::new("입력을 읽을 수 없습니다."))?;
+    let input = input.trim();
+
+    // 번호로 선택
+    if let Ok(n) = input.parse::<usize>() {
+        if n >= 1 && n <= options.len() {
+            return Ok(options[n - 1].clone());
+        }
+    }
+
+    // 텍스트로 선택
+    for (i, text) in rendered.iter().enumerate() {
+        if text == input {
+            return Ok(options[i].clone());
+        }
+    }
+
+    Err(RuntimeError::new(format!(
+        "잘못된 선택입니다: `{input}`"
+    )))
+}
 
 fn main() -> ExitCode {
     match run_cli() {
@@ -49,7 +83,11 @@ fn run_cli() -> Result<(), String> {
         }
         "run" => {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
-            let result = run_source(&source).map_err(|err| render_run_diagnostic(err, &source))?;
+            let mut session = InterpreterSession::new();
+            session.set_choose_fn(cli_choose);
+            let result = session
+                .run_source(&source)
+                .map_err(|err| render_run_diagnostic(err, &source))?;
             print_output(result)?;
         }
         "tokens" => {
@@ -113,6 +151,7 @@ fn run_repl_interactive() -> Result<(), String> {
         )
     })?;
     let mut session = InterpreterSession::new();
+    session.set_choose_fn(cli_choose);
     let mut buffer = Vec::new();
 
     loop {
@@ -161,6 +200,7 @@ fn run_repl_stream() -> Result<(), String> {
     let stdin = io::stdin();
     let mut input = stdin.lock();
     let mut session = InterpreterSession::new();
+    session.set_choose_fn(cli_choose);
     let mut buffer = Vec::new();
 
     loop {
@@ -417,9 +457,12 @@ fn last_significant_line(source: &str) -> Option<&str> {
 }
 
 fn line_opens_block(line: &str) -> bool {
-    ["이면", "아니면", "동안", "받아", "않아"]
-        .into_iter()
-        .any(|suffix| line.ends_with(suffix))
+    [
+        "이면", "아니면", "동안", "받아", "않아",
+        "크면", "작으면", "같으면", "다르면",
+    ]
+    .into_iter()
+    .any(|suffix| line.ends_with(suffix))
 }
 
 fn line_looks_incomplete(line: &str) -> bool {

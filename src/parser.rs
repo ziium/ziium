@@ -80,19 +80,9 @@ impl Parser {
             } else if self.match_kind(TokenKind::From) {
                 self.parse_resultive_statement(expr)?
             } else if self.match_kind(TokenKind::If) {
-                let then_block =
-                    self.parse_indented_block("`이면` 뒤에는 들여쓴 블록이 와야 합니다.")?;
-                let else_block = if self.match_kind(TokenKind::Else) {
-                    Some(self.parse_indented_block("`아니면` 뒤에는 들여쓴 블록이 와야 합니다.")?)
-                } else {
-                    None
-                };
-
-                Stmt::If {
-                    condition: expr,
-                    then_block,
-                    else_block,
-                }
+                self.parse_if_tail(expr, "`이면` 뒤에는 들여쓴 블록이 와야 합니다.")?
+            } else if self.at(TokenKind::Subject) && self.is_korean_comparison() {
+                self.parse_korean_comparison(expr)?
             } else if self.match_kind(TokenKind::In) {
                 self.expect(
                     TokenKind::During,
@@ -237,8 +227,24 @@ impl Parser {
     }
 
     fn parse_resultive_expression(&mut self, receiver: Expr) -> Result<Expr, ParseError> {
+        // 선택 프레임: `에서 고른 것이다` (role 없음)
+        if self.at_ident_lexeme("고른") {
+            let verb = self.advance().unwrap();
+            let result_marker = self.expect(
+                TokenKind::ResultMarker,
+                "`고른` 뒤에는 `것이다`가 와야 합니다.",
+            )?;
+            let expr = Expr::Resultive {
+                receiver: Box::new(receiver),
+                role: String::new(),
+                verb: verb.lexeme,
+            };
+            self.metadata.expr_spans.push(result_marker.span);
+            return Ok(expr);
+        }
+
         let role = self.parse_resultive_role(
-            "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를` 또는 `맨앞 요소를 꺼낸 것이다`만 지원합니다.",
+            "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를`, `맨앞 요소를 꺼낸 것이다` 또는 `고른 것이다`만 지원합니다.",
         )?;
         let object_label = format!("{}를", role);
         let verb_error = format!("`{}` 뒤에는 현재 `꺼낸`만 지원합니다.", object_label);
@@ -258,8 +264,19 @@ impl Parser {
     }
 
     fn parse_resultive_statement(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
+        // 선택 프레임 (문장형): `에서 고른다`
+        if self.at_ident_lexeme("고른다") {
+            let verb = self.advance().unwrap();
+            self.consume_optional_period();
+            return Ok(Stmt::Resultive {
+                receiver,
+                role: String::new(),
+                verb: verb.lexeme,
+            });
+        }
+
         let role = self.parse_resultive_role(
-            "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를` 또는 `맨앞 요소를 꺼낸다`만 지원합니다.",
+            "`에서` 뒤에는 현재 `맨위 요소를`, `맨뒤 요소를`, `맨앞 요소를 꺼낸다` 또는 `고른다`만 지원합니다.",
         )?;
         let object_label = format!("{}를", role);
         let verb_error = format!("`{}` 뒤에는 현재 `꺼낸다`만 지원합니다.", object_label);
@@ -290,19 +307,52 @@ impl Parser {
         self.metadata
             .assign_target_spans
             .push(name_token.span.clone());
-        let name = name_token.lexeme;
+        let name = name_token.lexeme.clone();
         self.expect(
             TokenKind::Object,
             "재대입 대상 뒤에는 `을` 또는 `를`이 와야 합니다.",
         )?;
-        let value = self.parse_expression(0)?;
-        self.expect(
-            TokenKind::Direction,
-            "재대입 값 뒤에는 `로` 또는 `으로`가 와야 합니다.",
-        )?;
-        self.expect(TokenKind::Change, "재대입 문장은 `바꾼다`로 끝나야 합니다.")?;
-        self.consume_optional_period();
-        Ok(Stmt::Assign { name, value })
+        let amount_expr = self.parse_expression(0)?;
+
+        if self.match_kind(TokenKind::Amount) {
+            // 상대적 변화: `체력을 10만큼 줄인다/늘린다`
+            let verb = self.advance().ok_or_else(|| {
+                self.error_here("`만큼` 뒤에는 `줄인다` 또는 `늘린다`가 와야 합니다.")
+            })?;
+            let op = match verb.lexeme.as_str() {
+                "줄인다" => BinaryOp::Subtract,
+                "늘린다" => BinaryOp::Add,
+                _ => {
+                    return Err(ParseError::new(
+                        "`만큼` 뒤에는 `줄인다` 또는 `늘린다`가 와야 합니다.",
+                        Some(verb.span),
+                    ));
+                }
+            };
+            self.metadata.name_expr_spans.push(verb.span.clone());
+            self.metadata.expr_spans.push(verb.span.clone());
+            let value = Expr::Binary {
+                left: Box::new(Expr::Name(name.clone())),
+                op,
+                right: Box::new(amount_expr),
+                form: BinarySurface::Symbol,
+            };
+            self.metadata.expr_spans.push(verb.span);
+            self.consume_optional_period();
+            Ok(Stmt::Assign { name, value })
+        } else {
+            // 기존 재대입: `체력을 20으로 바꾼다`
+            self.expect(
+                TokenKind::Direction,
+                "재대입 값 뒤에는 `로` 또는 `으로`가 와야 합니다.",
+            )?;
+            self.expect(TokenKind::Change, "재대입 문장은 `바꾼다`로 끝나야 합니다.")?;
+            self.consume_optional_period();
+            Ok(Stmt::Assign {
+                name,
+                value: amount_expr,
+            })
+        }
     }
 
     fn parse_function_def(&mut self) -> Result<Stmt, ParseError> {
@@ -770,5 +820,86 @@ impl Parser {
 
     fn error_here(&self, message: impl Into<String>) -> ParseError {
         ParseError::new(message, self.current_span())
+    }
+
+    fn parse_if_tail(&mut self, condition: Expr, block_msg: &str) -> Result<Stmt, ParseError> {
+        let then_block = self.parse_indented_block(block_msg)?;
+        let else_block = if self.match_kind(TokenKind::Else) {
+            Some(self.parse_indented_block("`아니면` 뒤에는 들여쓴 블록이 와야 합니다.")?)
+        } else {
+            None
+        };
+        Ok(Stmt::If {
+            condition,
+            then_block,
+            else_block,
+        })
+    }
+
+    /// Look ahead to check if this is a Korean comparison pattern:
+    /// `<expr> 가/이 <tokens...> 보다 크면/작으면/같으면/다르면`
+    fn is_korean_comparison(&self) -> bool {
+        // Current position is at Subject (가/이).
+        // Scan forward to find Than (보다) followed by a comparison word.
+        let mut i = self.pos + 1; // skip Subject
+        while let Some(token) = self.tokens.get(i) {
+            match token.kind {
+                TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
+                TokenKind::Than => {
+                    // Check if next token is a comparison word
+                    return self.tokens.get(i + 1).is_some_and(|next| {
+                        next.kind == TokenKind::Ident
+                            && matches!(
+                                next.lexeme.as_str(),
+                                "크면" | "작으면" | "같으면" | "다르면"
+                            )
+                    });
+                }
+                _ => i += 1,
+            }
+        }
+        false
+    }
+
+    /// Parse Korean comparison conditional:
+    /// `<left>가/이 <right>보다 크면/작으면/같으면/다르면`
+    /// Produces Stmt::If with a Binary comparison condition.
+    fn parse_korean_comparison(&mut self, left: Expr) -> Result<Stmt, ParseError> {
+        self.advance(); // consume Subject (가/이)
+
+        let right = self.parse_expression(0)?;
+
+        self.expect(
+            TokenKind::Than,
+            "한국어 비교문에서 `보다`가 필요합니다.",
+        )?;
+
+        let cmp_token = self.advance().ok_or_else(|| {
+            self.error_here("비교 서술어(`크면`, `작으면`, `같으면`, `다르면`)가 필요합니다.")
+        })?;
+        let cmp_span = cmp_token.span.clone();
+
+        let op = match cmp_token.lexeme.as_str() {
+            "크면" => BinaryOp::Greater,
+            "작으면" => BinaryOp::Less,
+            "같으면" => BinaryOp::Equal,
+            "다르면" => BinaryOp::NotEqual,
+            _ => {
+                return Err(ParseError::new(
+                    "비교 서술어는 `크면`, `작으면`, `같으면`, `다르면` 중 하나여야 합니다.",
+                    Some(cmp_token.span),
+                ));
+            }
+        };
+
+        let condition = Expr::Binary {
+            left: Box::new(left),
+            op,
+            right: Box::new(right),
+            form: BinarySurface::Symbol,
+        };
+        self.metadata.expr_spans.push(cmp_span);
+
+        self.parse_if_tail(condition, "한국어 비교문 뒤에는 들여쓴 블록이 와야 합니다.")
     }
 }

@@ -41,6 +41,10 @@
 - host keyword frame: `그림판에 <레코드>로/으로 <동작>`
 - resultive bind frame: `...에서 맨위 요소를 꺼낸 것이다`, `...에서 맨뒤 요소를 꺼낸 것이다`, `...에서 맨앞 요소를 꺼낸 것이다`
 - resultive effect frame: `...에서 맨위 요소를 꺼낸다`, `...에서 맨뒤 요소를 꺼낸다`, `...에서 맨앞 요소를 꺼낸다`
+- Korean comparison frame: `X가/이 Y보다 크면/작으면/같으면/다르면` — 기호 비교(`>`, `<`, `==`, `!=`)와 공존하며 같은 HIR Compare 노드로 내려간다.
+- relative change frame: `X를/을 N만큼 줄인다/늘린다` — `X를 (X - N)으로 바꾼다`의 syntactic sugar.
+- choice bind frame: `...에서 고른 것이다` — 목록에서 항목을 선택하는 resultive 확장. CLI에서는 stdin으로 선택을 받는다.
+- choice effect frame: `...에서 고른다` — choice bind의 문장형.
 
 현재 구현은 이 실험 프레임들을 허용하지만, 자유 자연어 문법으로 넓히지 않는다. 모두 닫힌 built-in 집합과 제한된 위치에서만 쓴다.
 

@@ -26,6 +26,7 @@ pub enum ResultiveMessage {
     PopTopElement,
     PopBackElement,
     PopFrontElement,
+    Choose,
 }
 
 impl WordMessage {
@@ -57,6 +58,7 @@ impl ResultiveMessage {
             ResultiveMessage::PopTopElement => "맨위 요소",
             ResultiveMessage::PopBackElement => "맨뒤 요소",
             ResultiveMessage::PopFrontElement => "맨앞 요소",
+            ResultiveMessage::Choose => "",
         }
     }
 
@@ -65,6 +67,7 @@ impl ResultiveMessage {
             ResultiveMessage::PopTopElement
             | ResultiveMessage::PopBackElement
             | ResultiveMessage::PopFrontElement => "꺼낸",
+            ResultiveMessage::Choose => "고른",
         }
     }
 }
@@ -93,6 +96,7 @@ pub(crate) fn resultive_message_for(role: &str, verb: &str) -> Option<ResultiveM
         ("맨위 요소", "꺼낸") => Some(ResultiveMessage::PopTopElement),
         ("맨뒤 요소", "꺼낸") => Some(ResultiveMessage::PopBackElement),
         ("맨앞 요소", "꺼낸") => Some(ResultiveMessage::PopFrontElement),
+        ("", "고른") => Some(ResultiveMessage::Choose),
         _ => None,
     }
 }

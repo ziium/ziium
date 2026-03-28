@@ -19,7 +19,8 @@ statement       = bind_stmt
                 ;
 
 bind_stmt       = IDENT, TOPIC, ( expression, COPULA | resultive_expr ), [ PERIOD ] ;
-assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ] ;
+assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ]
+                | IDENT, OBJECT, expression, AMOUNT, CHANGE_VERB, [ PERIOD ] ;
 print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 sleep_stmt      = expression, SECOND_UNIT, SLEEP, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;
@@ -31,10 +32,14 @@ push_message_stmt
 canvas_message_stmt
                 = CANVAS_HOST, LOCATIVE, record_literal, DIRECTION, CANVAS_VERB, [ PERIOD ] ;
 named_call_stmt = expression, OBJECT, record_literal, DIRECTION, CALL_VERB, [ PERIOD ] ;
-resultive_stmt  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_EFFECT, [ PERIOD ] ;
+resultive_stmt  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_EFFECT, [ PERIOD ]
+                | expression, FROM, CHOOSE_EFFECT, [ PERIOD ] ;
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF,
+                  newline, INDENT, block, DEDENT,
+                  [ ELSE, newline, INDENT, block, DEDENT ]
+                | expression, SUBJECT, expression, THAN, CMP_VERB,
                   newline, INDENT, block, DEDENT,
                   [ ELSE, newline, INDENT, block, DEDENT ] ;
 
@@ -73,7 +78,8 @@ call_suffix     = LPAREN, [ arg_list ], RPAREN ;
 transform_suffix = DIRECTION, IDENT ;
 index_suffix    = LBRACKET, expression, RBRACKET ;
 property_suffix = GEN, IDENT ;
-resultive_expr  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_RESULT ;
+resultive_expr  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_RESULT
+                | expression, FROM, CHOOSE_RESULT ;
 
 primary         = IDENT
                 | INT
@@ -142,6 +148,13 @@ CANVAS_VERB     = IDENT("지우기")
                 | IDENT("글자쓰기") ;
 RESULT_MARKER   = "것이다" ;
 CALL_VERB       = IDENT("호출한다") ;
+SUBJECT         = "이" | "가" ;
+THAN            = "보다" ;
+CMP_VERB        = IDENT("크면") | IDENT("작으면") | IDENT("같으면") | IDENT("다르면") ;
+AMOUNT          = "만큼" ;
+CHANGE_VERB     = IDENT("줄인다") | IDENT("늘린다") ;
+CHOOSE_RESULT   = IDENT("고른"), RESULT_MARKER ;
+CHOOSE_EFFECT   = IDENT("고른다") ;
 
 (* Primitive lexer tokens such as IDENT, INT, FLOAT, STRING, NEWLINE,
    INDENT, DEDENT, EOF and punctuation/operator tokens like LPAREN,

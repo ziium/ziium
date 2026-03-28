@@ -503,6 +503,7 @@ fn lower_resultive_selector(role: &str, verb: &str) -> SendSelector {
     // the same closed resultive selector.
     let verb = match verb {
         "꺼낸다" => "꺼낸",
+        "고른다" => "고른",
         other => other,
     };
     let selector =
