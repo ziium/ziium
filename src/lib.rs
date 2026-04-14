@@ -3,6 +3,7 @@ pub mod error;
 pub mod hir;
 pub mod interpreter;
 pub mod lexer;
+pub mod lexer_ja;
 mod message;
 pub mod normalizer;
 pub mod parser;
@@ -23,6 +24,7 @@ pub use interpreter::{
     interpret_hir_program, interpret_program, run_source,
 };
 pub use lexer::lex;
+pub use lexer_ja::lex_ja;
 pub use message::{KeywordMessage, ResultiveMessage, UnaryMessage, WordMessage};
 pub use normalizer::normalize_tokens;
 pub use parser::{parse_source, parse_tokens};

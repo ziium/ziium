@@ -177,7 +177,7 @@ fn rejects_named_call_statement_without_record_args() {
     let err = parse_source("탑옮기기를 원반수로 호출한다.").expect_err("parse should fail");
     assert!(
         err.to_string()
-            .contains("이름 붙은 호출의 인수는 레코드여야 합니다")
+            .contains("이름 붙은 호출에 넘긴 값은 레코드여야 합니다")
     );
 }
 

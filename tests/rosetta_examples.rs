@@ -10,6 +10,17 @@ fn assert_output(source: &str, expected: &[&str]) {
     assert_eq!(result.output, expected);
 }
 
+fn assert_error(source: &str, expected_fragment: &str) {
+    let err = run_source(source).expect_err("program should produce an error");
+    let message = err.to_string();
+    assert!(
+        message.contains(expected_fragment),
+        "expected error containing {:?}, got: {:?}",
+        expected_fragment,
+        message,
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 재귀 깊이 가드
 // ---------------------------------------------------------------------------
@@ -421,4 +432,380 @@ fn runs_string_equality() {
         다름을 출력한다
     "#};
     assert_output(source, &["참", "참"]);
+}
+
+// ===========================================================================
+// 배치 3: 에러 경로 — 타입 오류 / 함수 인자 / 인덱스 / 빌트인 타입
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 타입 오류: 산술 / 비교
+// ---------------------------------------------------------------------------
+
+// Python: "글자" + 3  → TypeError: can only concatenate str (not "int") to str
+// Ruby:   "글자" + 3  → TypeError: no implicit conversion of Integer into String
+//
+// 지음: 숫자끼리 또는 문자열끼리만 더할 수 있음
+#[test]
+fn rejects_addition_of_string_and_number() {
+    // "글자" + 3
+    let source = indoc! {r#"
+        결과는 "글자" + 3이다
+    "#};
+    assert_error(source, "숫자끼리 또는 문자열끼리만");
+}
+
+// Python: "가" - "나"  → TypeError: unsupported operand type(s) for -
+// Ruby:   "가" - "나"  → NoMethodError: undefined method `-' for String
+#[test]
+fn rejects_subtraction_of_strings() {
+    // "가" - "나"
+    let source = indoc! {r#"
+        결과는 "가" - "나"이다
+    "#};
+    assert_error(source, "숫자 연산은 정수 또는 실수에만");
+}
+
+// Python: 3.5 % 2.0  → 1.5 (허용)
+// Ruby:   3.5 % 2.0  → 1.5 (허용)
+//
+// 지음 고유: `%`를 정수 전용으로 제한 — 부동소수점 나머지의 혼란을 방지하는 설계 결정
+#[test]
+fn rejects_modulo_on_floats() {
+    // 3.5 % 2.0
+    let source = indoc! {"
+        결과는 3.5 % 2.0이다
+    "};
+    assert_error(source, "정수끼리만");
+}
+
+// Python: "가" > "나"  → True (유니코드 코드포인트 순 비교)
+// Ruby:   "가" > "나"  → true (동일)
+//
+// 지음 고유: 비교 연산은 숫자에만 허용 — 문자열 정렬은 별도 기능으로 제공 예정
+#[test]
+fn rejects_comparison_on_non_numbers() {
+    // "가" > "나"
+    let source = indoc! {r#"
+        결과는 "가" > "나"이다
+    "#};
+    assert_error(source, "비교 연산은 숫자에만");
+}
+
+// ---------------------------------------------------------------------------
+// 함수에 넘긴 값의 개수 불일치
+// ---------------------------------------------------------------------------
+
+// Python: def add(a, b): ...;  add(1)  → TypeError: missing 1 required positional argument
+// Ruby:   def add(a, b) ...; add(1) → ArgumentError: wrong number of arguments (given 1, expected 2)
+#[test]
+fn rejects_function_call_with_too_few_args() {
+    // 더하기(왼쪽, 오른쪽) 에 값 1개만 전달
+    let source = indoc! {"
+        더하기 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 + 오른쪽을 돌려준다
+
+        더하기(1)을 출력한다
+    "};
+    assert_error(source, "함수에 넘긴 값의 개수가 맞지 않습니다");
+}
+
+// Python: def add(a, b): ...; add(1, 2, 3)  → TypeError: takes 2 positional arguments but 3 were given
+// Ruby:   def add(a, b) ...; add(1, 2, 3) → ArgumentError: wrong number of arguments (given 3, expected 2)
+#[test]
+fn rejects_function_call_with_too_many_args() {
+    // 더하기(왼쪽, 오른쪽) 에 값 3개 전달
+    let source = indoc! {"
+        더하기 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 + 오른쪽을 돌려준다
+
+        더하기(1, 2, 3)을 출력한다
+    "};
+    assert_error(source, "함수에 넘긴 값의 개수가 맞지 않습니다");
+}
+
+// ---------------------------------------------------------------------------
+// 인덱스: 범위 초과 / 음수
+// ---------------------------------------------------------------------------
+
+// Python: [10, 20, 30][5]  → IndexError: list index out of range
+// Ruby:   [10, 20, 30][5]  → nil (에러가 아닌 nil 반환 — 다른 설계 철학)
+#[test]
+fn rejects_list_index_out_of_bounds() {
+    // [10, 20, 30][5]
+    let source = indoc! {"
+        목록은 [10, 20, 30]이다
+        목록[5]를 출력한다
+    "};
+    assert_error(source, "목록 인덱스가 범위를 벗어났습니다");
+}
+
+// Python: "가나다"[10]  → IndexError: string index out of range
+// Ruby:   "가나다"[10]  → nil
+#[test]
+fn rejects_string_index_out_of_bounds() {
+    // "가나다"[10]
+    let source = indoc! {r#"
+        글자는 "가나다"[10]이다
+    "#};
+    assert_error(source, "문자열 인덱스가 범위를 벗어났습니다");
+}
+
+// Python: [10, 20, 30][-1]  → 30 (뒤에서부터 — 음수 인덱스 허용)
+// Ruby:   [10, 20, 30][-1]  → 30 (동일)
+//
+// 지음 고유: 음수 인덱스를 허용하지 않음 — 의도하지 않은 역방향 접근 방지
+#[test]
+fn rejects_negative_index() {
+    // 목록[-1]
+    let source = indoc! {"
+        목록은 [10, 20, 30]이다
+        목록[-1]을 출력한다
+    "};
+    assert_error(source, "인덱스는 0 이상의 정수여야 합니다");
+}
+
+// ---------------------------------------------------------------------------
+// 빌트인 타입 검증
+// ---------------------------------------------------------------------------
+
+// Python: len(3)  → TypeError: object of type 'int' has no len()
+// Ruby:   3.length  → NoMethodError: undefined method `length' for Integer
+#[test]
+fn rejects_length_on_non_collection() {
+    // 길이(3)
+    let source = indoc! {"
+        길이(3)을 출력한다
+    "};
+    assert_error(source, "목록, 문자열, 레코드에만");
+}
+
+// ===========================================================================
+// 배치 4: 기능 테스트 — 목록 / 레코드 / 논리 연산 / 타입 변환
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 목록: 생성·순회, 추가, 꺼내기, 동치, 혼합 타입
+// ---------------------------------------------------------------------------
+
+// Python:
+//   fruits = ["사과", "바나나", "포도"]
+//   for i in range(len(fruits)):
+//       print(fruits[i])
+//
+// Ruby:
+//   fruits = ["사과", "바나나", "포도"]
+//   fruits.each { |f| puts f }
+//
+// 지음: 인덱싱 + `의 길이` 속성으로 while 순회
+#[test]
+fn runs_list_create_and_iterate() {
+    let source = indoc! {r#"
+        과일들은 ["사과", "바나나", "포도"]이다
+        차례는 0이다
+        차례 < 과일들의 길이인 동안
+          과일들[차례]를 출력한다
+          차례를 차례 + 1로 바꾼다
+    "#};
+    assert_output(source, &["사과", "바나나", "포도"]);
+}
+
+// Python: scores = [90, 85]; scores.append(100); print(len(scores))
+// Ruby:   scores = [90, 85]; scores.push(100); puts scores.length
+//
+// 지음 고유: 키워드 메시지 — `목록에 값 추가`
+#[test]
+fn runs_list_append_keyword_message() {
+    let source = indoc! {"
+        점수들은 [90, 85]이다
+        점수들에 100 추가
+        점수들의 길이를 출력한다
+        점수들[2]을 출력한다
+    "};
+    assert_output(source, &["3", "100"]);
+}
+
+// Python: cards = [1, 2, 3]; drawn = cards.pop(); print(drawn, len(cards))
+// Ruby:   cards = [1, 2, 3]; drawn = cards.pop; puts drawn, cards.length
+//
+// 지음 고유: 결과서술 바인딩 — `목록에서 맨위 요소를 꺼낸 것이다`
+#[test]
+fn runs_list_pop_resultive_binding() {
+    let source = indoc! {"
+        카드는 [1, 2, 3]이다
+        뽑은것은 카드에서 맨위 요소를 꺼낸 것이다
+        뽑은것을 출력한다
+        카드의 길이를 출력한다
+    "};
+    assert_output(source, &["3", "2"]);
+}
+
+// Python: [1, 2, 3] == [1, 2, 3]  # True;  [1, 2, 3] == [1, 2, 4]  # False
+// Ruby:   [1, 2, 3] == [1, 2, 3]  # true;  [1, 2, 3] == [1, 2, 4]  # false
+#[test]
+fn runs_list_equality() {
+    let source = indoc! {"
+        왼쪽은 [1, 2, 3]이다
+        오른쪽은 [1, 2, 3]이다
+        같은지는 왼쪽 == 오른쪽이다
+        같은지를 출력한다
+        다른것은 [1, 2, 4]이다
+        다른지는 왼쪽 == 다른것이다
+        다른지를 출력한다
+    "};
+    assert_output(source, &["참", "거짓"]);
+}
+
+// Python: items = [1, "둘", True]; print(len(items))
+// Ruby:   items = [1, "둘", true]; puts items.length
+#[test]
+fn runs_list_heterogeneous_types() {
+    let source = indoc! {r#"
+        모음은 [42, "안녕", 참]이다
+        모음의 길이를 출력한다
+        모음[0]을 출력한다
+        모음[1]을 출력한다
+        모음[2]을 출력한다
+    "#};
+    assert_output(source, &["3", "42", "안녕", "참"]);
+}
+
+// ---------------------------------------------------------------------------
+// 레코드: 생성·접근, 축약, 중첩 체이닝
+// ---------------------------------------------------------------------------
+
+// Python: person = {"이름": "영희", "나이": 25}; print(person["이름"])
+// Ruby:   person = {이름: "영희", 나이: 25}; puts person[:이름]
+//
+// 지음 고유: 소유격 프레임 — `레코드의 필드`
+#[test]
+fn runs_record_create_and_property_access() {
+    let source = indoc! {r#"
+        사람은 { 이름: "영희", 나이: 25 }이다
+        사람의 이름을 출력한다
+        사람의 나이를 출력한다
+    "#};
+    assert_output(source, &["영희", "25"]);
+}
+
+// Python: N/A (no shorthand for dict)
+// Ruby:   N/A (symbol shorthand is different)
+//
+// 지음 고유: 레코드 축약 — 변수명이 키 이름과 같으면 값 생략
+#[test]
+fn runs_record_shorthand_syntax() {
+    let source = indoc! {r#"
+        이름은 "민수"이다
+        학생은 { 이름, 나이: 18 }이다
+        학생의 이름을 출력한다
+        학생의 나이를 출력한다
+    "#};
+    assert_output(source, &["민수", "18"]);
+}
+
+// Python: addr = {"도시": "서울"}
+//         person = {"이름": "영희", "주소": addr}
+//         print(person["주소"]["도시"])
+//
+// Ruby:   person[:주소][:도시]
+//
+// 지음 고유: 소유격 체이닝 — `레코드의 필드의 필드`
+#[test]
+fn runs_nested_record_property_chain() {
+    let source = indoc! {r#"
+        주소는 { 도시: "서울", 동네: "강남" }이다
+        사람은 { 이름: "영희", 주소 }이다
+        사람의 주소의 도시를 출력한다
+        사람의 주소의 동네를 출력한다
+    "#};
+    assert_output(source, &["서울", "강남"]);
+}
+
+// ---------------------------------------------------------------------------
+// 논리 연산: 그리고 / 또는 / 아니다
+// ---------------------------------------------------------------------------
+
+// Python: True and False  # False;  True or False  # True;  not True  # False
+// Ruby:   true && false   # false;  true || false  # true;  !true     # false
+#[test]
+fn runs_logical_operators() {
+    let source = indoc! {"
+        결과1은 참 그리고 거짓이다
+        결과1을 출력한다
+        결과2는 참 또는 거짓이다
+        결과2를 출력한다
+        결과3은 아니다 참이다
+        결과3을 출력한다
+    "};
+    assert_output(source, &["거짓", "참", "거짓"]);
+}
+
+// Python: if temp > 0 and temp < 40: print("적정")
+// Ruby:   puts "적정" if temp > 0 && temp < 40
+#[test]
+fn runs_compound_boolean_in_condition() {
+    let source = indoc! {r#"
+        온도는 25이다
+        온도 > 0 그리고 온도 < 40이면
+          "적정"을 출력한다
+        아니면
+          "이상"을 출력한다
+    "#};
+    assert_output(source, &["적정"]);
+}
+
+// ---------------------------------------------------------------------------
+// 타입 변환: 문자열로 / 정수로 / 실수로
+// ---------------------------------------------------------------------------
+
+// Python: 5 ** 2  # 25;  3.0 ** 2  # 9.0
+// Ruby:   5 ** 2  # 25;  3.0 ** 2  # 9.0
+//
+// 지음 고유: 소유격 프레임 `의 제곱` — 속성 메시지로 거듭제곱 표현
+#[test]
+fn runs_square_property() {
+    let source = indoc! {"
+        정수제곱은 5의 제곱이다
+        정수제곱을 출력한다
+        실수제곱은 3.0의 제곱이다
+        실수제곱을 출력한다
+    "};
+    assert_output(source, &["25", "9.0"]);
+}
+
+// ---------------------------------------------------------------------------
+// 실수: 정수/실수 혼합 산술
+// ---------------------------------------------------------------------------
+
+// Python: 3 + 0.14  # 3.14 (int auto-promoted to float)
+// Ruby:   3 + 0.14  # 3.14
+#[test]
+fn runs_float_int_mixed_arithmetic() {
+    let source = indoc! {"
+        원주율은 3 + 0.14이다
+        원주율을 출력한다
+        넓이는 2 * 3.5이다
+        넓이를 출력한다
+    "};
+    assert_output(source, &["3.14", "7.0"]);
+}
+
+// ---------------------------------------------------------------------------
+// 변환 호출: `값으로 함수이름` 구문
+// ---------------------------------------------------------------------------
+
+// Python: double = lambda n: n * 2;  double(5)  # 10
+// Ruby:   def double(n) = n * 2;  double(5)  # 10
+//
+// 지음 고유: `값으로 함수이름` — 한 값을 변환하는 자연어 호출
+#[test]
+fn runs_transform_call_syntax() {
+    let source = indoc! {"
+        두배 함수는 숫자를 받아
+          숫자 * 2를 돌려준다
+
+        결과는 5로 두배이다
+        결과를 출력한다
+    "};
+    assert_output(source, &["10"]);
 }

@@ -129,14 +129,14 @@ impl Parser {
         let named_args = self.parse_expression_without_transform(0)?;
         self.expect(
             TokenKind::Direction,
-            "호출 인수 뒤에는 `로` 또는 `으로`가 와야 합니다.",
+            "넘긴 값 뒤에는 `로` 또는 `으로`가 와야 합니다.",
         )?;
         self.expect_ident_lexeme(
             "호출한다",
             "`로` 또는 `으로` 뒤에는 `호출한다`가 와야 합니다.",
         )?;
         if !matches!(named_args, Expr::Record(_)) {
-            return Err(self.error_here("이름 붙은 호출의 인수는 레코드여야 합니다."));
+            return Err(self.error_here("이름 붙은 호출에 넘긴 값은 레코드여야 합니다."));
         }
         self.consume_optional_period();
         Ok(Stmt::NamedCall { callee, named_args })
@@ -180,7 +180,7 @@ impl Parser {
                 }
                 if !matches!(&arg, Expr::Record(_)) {
                     return Err(ParseError::new(
-                        "`그림판` 동작의 인수는 레코드여야 합니다.",
+                        "`그림판` 동작에 넘긴 값은 레코드여야 합니다.",
                         Some(selector.span.clone()),
                     ));
                 }

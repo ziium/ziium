@@ -9,7 +9,7 @@ use std::time::Duration;
 use unicode_width::UnicodeWidthStr;
 use ziium::{
     FrontendError, InterpreterSession, LexError, ParseError, ResolveError, RunError, RuntimeError,
-    Span, Token, TokenKind, Value, lex, parse_source, parse_source_to_hir,
+    Span, Token, TokenKind, Value, lex, lex_ja, parse_source, parse_source_to_hir, parse_tokens,
 };
 
 fn cli_choose(options: &[Value]) -> Result<Value, RuntimeError> {
@@ -74,6 +74,8 @@ fn run_cli() -> Result<(), String> {
         return Err(usage());
     }
 
+    let lang = detect_language(path.as_deref());
+
     match mode {
         "repl" => {
             if path.is_some() {
@@ -83,16 +85,35 @@ fn run_cli() -> Result<(), String> {
         }
         "run" => {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
-            let mut session = InterpreterSession::new();
-            session.set_choose_fn(cli_choose);
-            let result = session
-                .run_source(&source)
-                .map_err(|err| render_run_diagnostic(err, &source))?;
-            print_output(result)?;
+            if lang == "ja" {
+                let tokens =
+                    lex_ja(&source).map_err(|err| render_lex_diagnostic(err, &source))?;
+                let program = parse_tokens(tokens)
+                    .map_err(|err| render_frontend_diagnostic(err.into(), &source))?;
+                let mut session = InterpreterSession::new();
+                session.set_choose_fn(cli_choose);
+                let result = session
+                    .interpret_program(&program)
+                    .map_err(|err| {
+                        render_run_diagnostic(RunError::Runtime(err), &source)
+                    })?;
+                print_output(result)?;
+            } else {
+                let mut session = InterpreterSession::new();
+                session.set_choose_fn(cli_choose);
+                let result = session
+                    .run_source(&source)
+                    .map_err(|err| render_run_diagnostic(err, &source))?;
+                print_output(result)?;
+            }
         }
         "tokens" => {
             let source = read_source(path.as_deref()).map_err(render_input_error)?;
-            let tokens = lex(&source).map_err(|err| render_lex_diagnostic(err, &source))?;
+            let tokens = if lang == "ja" {
+                lex_ja(&source).map_err(|err| render_lex_diagnostic(err, &source))?
+            } else {
+                lex(&source).map_err(|err| render_lex_diagnostic(err, &source))?
+            };
             for token in tokens {
                 println!("{}", render_token(&token));
             }
@@ -542,6 +563,13 @@ enum ReplAction {
     Run(ziium::ExecutionResult),
     Wait,
     Error(String),
+}
+
+fn detect_language(path: Option<&str>) -> &'static str {
+    match path {
+        Some(p) if p.ends_with(".zmj") => "ja",
+        _ => "ko",
+    }
 }
 
 fn usage() -> String {

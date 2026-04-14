@@ -604,7 +604,7 @@ impl Interpreter {
             Value::Function(FunctionValue::User(function)) => {
                 if function.params.len() != args.len() {
                     return Err(RuntimeError::new(format!(
-                        "함수 인수 개수가 맞지 않습니다. 기대: {}, 실제: {}",
+                        "함수에 넘긴 값의 개수가 맞지 않습니다. 필요: {}, 받음: {}",
                         function.params.len(),
                         args.len()
                     )));
@@ -652,7 +652,7 @@ impl Interpreter {
                 for key in named_args.keys() {
                     if !function.params.iter().any(|param| param == key) {
                         return Err(RuntimeError::new(format!(
-                            "`{}` 함수에는 `{}` 인수가 없습니다.",
+                            "`{}` 함수에는 `{}`라는 값이 없습니다.",
                             function.name, key
                         )));
                     }
@@ -662,7 +662,7 @@ impl Interpreter {
                 for param in &function.params {
                     let value = named_args.get(param).cloned().ok_or_else(|| {
                         RuntimeError::new(format!(
-                            "`{}` 함수 호출에 `{}` 인수가 필요합니다.",
+                            "`{}` 함수 호출에 `{}` 값이 필요합니다.",
                             function.name, param
                         ))
                     })?;
@@ -708,7 +708,7 @@ impl Interpreter {
                         Ok(Value::None)
                     }
                     _ => Err(RuntimeError::new(
-                        "`추가`의 첫 번째 인수는 목록이어야 합니다.",
+                        "`추가`에 넘긴 첫 번째 값은 목록이어야 합니다.",
                     )),
                 }
             }
@@ -807,14 +807,14 @@ impl Interpreter {
         match selector {
             SendSelector::Property(name) => {
                 if !args.is_empty() {
-                    return Err(RuntimeError::new("속성 메시지는 인수를 받을 수 없습니다."));
+                    return Err(RuntimeError::new("속성 메시지는 값을 받을 수 없습니다."));
                 }
                 self.eval_property(receiver, name)
             }
             SendSelector::Transform(callee_name) => {
                 if !args.is_empty() {
                     return Err(RuntimeError::new(
-                        "변환 호출은 추가 인수를 받을 수 없습니다.",
+                        "변환 호출은 추가 값을 받을 수 없습니다.",
                     ));
                 }
                 let callee = lookup_value(&env, callee_name)
@@ -825,7 +825,7 @@ impl Interpreter {
             SendSelector::Resultive(selector) => {
                 if !args.is_empty() {
                     return Err(RuntimeError::new(
-                        "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
+                        "결과 서술 메시지는 추가 값을 받을 수 없습니다.",
                     ));
                 }
                 self.send_resultive_message(receiver, *selector)
@@ -847,7 +847,7 @@ impl Interpreter {
             SendSelector::Resultive(selector) => {
                 if !args.is_empty() {
                     return Err(RuntimeError::new(
-                        "결과 서술 메시지는 추가 인수를 받을 수 없습니다.",
+                        "결과 서술 메시지는 추가 값을 받을 수 없습니다.",
                     ));
                 }
                 self.send_resultive_message(receiver, *selector).map(|_| ())
@@ -1300,7 +1300,7 @@ fn expect_record(name: &str, value: Value) -> Result<BTreeMap<String, Value>, Ru
     match value {
         Value::Record(map) => Ok(map.borrow().clone()),
         _ => Err(RuntimeError::new(format!(
-            "`{name}` 인수는 레코드여야 합니다."
+            "`{name}`에 넘긴 값은 레코드여야 합니다."
         ))),
     }
 }
@@ -1366,7 +1366,7 @@ fn expect_sleep_seconds(value: Value) -> Result<f64, RuntimeError> {
 fn expect_arity<const N: usize>(name: &str, args: Vec<Value>) -> Result<[Value; N], RuntimeError> {
     args.try_into().map_err(|values: Vec<Value>| {
         RuntimeError::new(format!(
-            "`{}` 함수 인수 개수가 맞지 않습니다. 기대: {}, 실제: {}",
+            "`{}` 함수에 넘긴 값의 개수가 맞지 않습니다. 필요: {}, 받음: {}",
             name,
             N,
             values.len()

@@ -110,7 +110,7 @@ fn reports_transform_call_arity_mismatch_for_non_unary_function() {
 결과는 "지음"으로 합치기이다"#;
     let err = run_source(source).expect_err("program should fail");
     let message = err.to_string();
-    assert!(message.contains("함수 인수 개수가 맞지 않습니다. 기대: 2, 실제: 1"));
+    assert!(message.contains("함수에 넘긴 값의 개수가 맞지 않습니다. 필요: 2, 받음: 1"));
 }
 
 #[test]
