@@ -567,9 +567,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 // are not incorrectly normalized into `나` + `이`. Parser-side helpers handle
 // a few high-value attached forms such as one-syllable print/assign targets.
 fn should_split_word(base: &str, suffix: &str) -> bool {
-    // "이다"/"이면"은 KEYWORD_SUFFIXES에서 처리하되 base_len >= 2 가드에 위임 (P-3).
+    // "이다"/"이면"은 키워드 접미사이므로 base 길이와 무관하게 항상 분리한다.
     // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.
-    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼") {
+    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼" | "이면" | "이다") {
         return true;
     }
 

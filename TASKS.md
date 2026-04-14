@@ -78,7 +78,7 @@
 
 #### P-3. 키워드 접미사 무조건 분리 (`인`, `이면`, `이다`) ✅
 - **증상**: `회문확인 함수는` → `Ident("회문확") + In("인")`, "`인` 뒤에는 `동안`이 와야"
-- **수정**: KEYWORD_SUFFIXES에서 `인` 제거 + `should_split_word` 화이트리스트 축소 + normalizer에 `split_in_before_during` 추가
+- **수정**: KEYWORD_SUFFIXES에서 `인` 제거 + `should_split_word` 화이트리스트 축소 + normalizer에 `split_in_before_during` 추가 + 리뷰에서 발견한 단음절 회귀 수정 (`이면`/`이다`를 화이트리스트에 복원)
 - **테스트**: `interpreter_examples.rs` — 3개 테스트 추가
 
 #### P-4. while 본문이 반복 간 스코프를 공유 → 루프 내 바인딩 불가 ✅
