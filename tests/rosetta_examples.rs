@@ -215,3 +215,210 @@ fn runs_nested_while_loops() {
     "};
     assert_output(source, &["1", "2", "3", "1", "2", "3"]);
 }
+
+// ===========================================================================
+// 배치 2: 기능 테스트 — 함수 / 문자열
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 함수: 호출 체인, 조기 반환, 재귀, 조건 분기 반환
+// ---------------------------------------------------------------------------
+
+// Python:
+//   def double(n): return n * 2
+//   def quadruple(n): return double(double(n))
+//   print(quadruple(3))  # 12
+//
+// Ruby:
+//   def double(n) = n * 2
+//   def quadruple(n) = double(double(n))
+//   puts quadruple(3)  # 12
+#[test]
+fn runs_function_calling_function() {
+    let source = indoc! {"
+        두배 함수는 숫자를 받아
+          숫자 * 2를 돌려준다
+
+        네배 함수는 숫자를 받아
+          두배(두배(숫자))를 돌려준다
+
+        네배(3)을 출력한다
+    "};
+    assert_output(source, &["12"]);
+}
+
+// Python:
+//   def abs(n):
+//       if n < 0: return -n
+//       return n
+//   print(abs(-7))  # 7
+//   print(abs(5))   # 5
+//
+// Ruby:
+//   def abs(n) = n < 0 ? -n : n
+#[test]
+fn runs_early_return() {
+    let source = indoc! {"
+        절대값 함수는 숫자를 받아
+          숫자 < 0이면
+            -숫자를 돌려준다
+          숫자를 돌려준다
+
+        절대값(-7)을 출력한다
+        절대값(5)를 출력한다
+    "};
+    assert_output(source, &["7", "5"]);
+}
+
+// Python:
+//   def factorial(n):
+//       if n <= 1: return 1
+//       return n * factorial(n - 1)
+//   print(factorial(5))  # 120
+//
+// Ruby:
+//   def factorial(n) = n <= 1 ? 1 : n * factorial(n - 1)
+#[test]
+fn runs_recursive_factorial() {
+    let source = indoc! {"
+        팩토리얼 함수는 숫자를 받아
+          숫자 <= 1이면
+            1을 돌려준다
+          숫자 * 팩토리얼(숫자 - 1)을 돌려준다
+
+        팩토리얼(5)를 출력한다
+    "};
+    assert_output(source, &["120"]);
+}
+
+// Python:
+//   def grade(score):
+//       if score >= 90: return "A"
+//       if score >= 80: return "B"
+//       return "C"
+//   print(grade(95))  # A
+//   print(grade(82))  # B
+//   print(grade(70))  # C
+//
+// Ruby:
+//   def grade(score)
+//     return "A" if score >= 90
+//     return "B" if score >= 80
+//     "C"
+//   end
+#[test]
+fn runs_function_with_branching_returns() {
+    let source = indoc! {r#"
+        등급 함수는 점수를 받아
+          점수 >= 90이면
+            "A"를 돌려준다
+          점수 >= 80이면
+            "B"를 돌려준다
+          "C"를 돌려준다
+
+        등급(95)를 출력한다
+        등급(82)를 출력한다
+        등급(70)을 출력한다
+    "#};
+    assert_output(source, &["A", "B", "C"]);
+}
+
+// Python:
+//   def add(a, b): return a + b
+//   def mul(a, b): return a * b
+//   print(add(mul(2, 3), mul(4, 5)))  # 26
+//
+// Ruby:
+//   def add(a, b) = a + b
+//   def mul(a, b) = a * b
+//   puts add(mul(2, 3), mul(4, 5))  # 26
+#[test]
+fn runs_multi_param_function_composition() {
+    let source = indoc! {"
+        더하기 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 + 오른쪽을 돌려준다
+
+        곱 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 * 오른쪽을 돌려준다
+
+        더하기(곱(2, 3), 곱(4, 5))를 출력한다
+    "};
+    assert_output(source, &["26"]);
+}
+
+// Python:
+//   def fib(n):
+//       if n <= 1: return n
+//       return fib(n - 1) + fib(n - 2)
+//   for i in range(8): print(fib(i))
+//
+// Ruby:
+//   def fib(n) = n <= 1 ? n : fib(n-1) + fib(n-2)
+//   8.times { |i| puts fib(i) }
+#[test]
+fn runs_fibonacci_recursive() {
+    let source = indoc! {"
+        피보나치 함수는 숫자를 받아
+          숫자 <= 1이면
+            숫자를 돌려준다
+          피보나치(숫자 - 1) + 피보나치(숫자 - 2)를 돌려준다
+
+        순서는 0이다
+        순서 < 8인 동안
+          피보나치(순서)를 출력한다
+          순서를 순서 + 1로 바꾼다
+    "};
+    assert_output(source, &["0", "1", "1", "2", "3", "5", "8", "13"]);
+}
+
+// ---------------------------------------------------------------------------
+// 문자열: 연결, 길이, 인덱싱, 비교
+// ---------------------------------------------------------------------------
+
+// Python: "Hello" + ", " + "World!"  # "Hello, World!"
+// Ruby:   "Hello" + ", " + "World!"  # "Hello, World!"
+#[test]
+fn runs_string_concatenation_chain() {
+    let source = indoc! {r#"
+        인사는 "안녕" + ", " + "세상아!"이다
+        인사를 출력한다
+    "#};
+    assert_output(source, &["안녕, 세상아!"]);
+}
+
+// Python: len("가나다")  # 3
+// Ruby:   "가나다".length  # 3 (chars)
+//
+// 지음 고유: 소유격 프레임 "X의 길이"
+#[test]
+fn runs_string_length_unicode() {
+    let source = indoc! {r#"
+        단어는 "가나다라마"이다
+        단어의 길이를 출력한다
+    "#};
+    assert_output(source, &["5"]);
+}
+
+// Python: "안녕하세요"[2]  # "하"
+// Ruby:   "안녕하세요"[2]  # "하"
+#[test]
+fn runs_string_indexing() {
+    let source = indoc! {r#"
+        글자는 "안녕하세요"[2]이다
+        글자를 출력한다
+    "#};
+    assert_output(source, &["하"]);
+}
+
+// Python: "abc" == "abc"  # True;  "abc" == "xyz"  # False
+// Ruby:   "abc" == "abc"  # true;  "abc" == "xyz"  # false
+#[test]
+fn runs_string_equality() {
+    let source = indoc! {r#"
+        같음은 "지음" == "지음"이다
+        같음을 출력한다
+        다름은 "지음" != "다른말"이다
+        다름을 출력한다
+    "#};
+    assert_output(source, &["참", "참"]);
+}
