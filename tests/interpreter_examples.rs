@@ -454,3 +454,31 @@ fn splits_in_before_during_for_while_loop() {
   인덱스를 인덱스 + 1로 바꾼다"#;
     assert_output(source, &["3", "5", "8"]);
 }
+
+// ---------------------------------------------------------------------------
+// P-4: while 본문 스코프 — 반복 간 바인딩 독립
+// ---------------------------------------------------------------------------
+
+#[test]
+fn allows_binding_inside_while_loop() {
+    // 매 반복마다 새 변수를 바인딩할 수 있어야 함
+    let source = r#"목록은 [10, 20, 30]이다
+인덱스는 0이다
+인덱스 < 목록의 길이인 동안
+  값은 목록[인덱스]이다
+  값을 출력한다
+  인덱스를 인덱스 + 1로 바꾼다"#;
+    assert_output(source, &["10", "20", "30"]);
+}
+
+#[test]
+fn while_body_does_not_leak_bindings_to_outer_scope() {
+    // while 본문에서 정의한 변수가 외부로 누출되면 안 됨
+    let source = r#"횟수는 0이다
+횟수 < 1인 동안
+  임시는 "안녕"이다
+  횟수를 횟수 + 1로 바꾼다
+임시를 출력한다"#;
+    let err = ziium::run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("정의되지 않았습니다"));
+}

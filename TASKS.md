@@ -61,7 +61,7 @@
 
 - [x] 실패 분석 → 기능 백로그 작성 (P-1~P-4)
 - [x] P-1 구현 ✅, P-2 구현 ✅, P-3 구현 ✅
-- [ ] P-4 구현 → 회귀 확인
+- [x] P-4 구현 ✅ → 192 테스트 통과, 회귀 0
 
 ### Backlog: 배치 5 프로빙에서 발견한 파서 한계
 
@@ -81,8 +81,7 @@
 - **수정**: KEYWORD_SUFFIXES에서 `인` 제거 + `should_split_word` 화이트리스트 축소 + normalizer에 `split_in_before_during` 추가
 - **테스트**: `interpreter_examples.rs` — 3개 테스트 추가
 
-#### P-4. while 본문이 반복 간 스코프를 공유 → 루프 내 바인딩 불가
+#### P-4. while 본문이 반복 간 스코프를 공유 → 루프 내 바인딩 불가 ✅
 - **증상**: while 안에서 `중간은 ...이다` → 2회차에 "이미 정의되어 있습니다"
-- **원인**: `execute_block(body, env.clone())` — `Rc` clone이므로 같은 환경 공유
-- **영향**: 루프 안에서 매 반복 새 변수를 바인딩하는 패턴 불가
-- **경로**: `interpreter.rs:356` (env 공유) + `interpreter.rs:276` (중복 바인딩 거부)
+- **수정**: while 본문 실행 시 `Environment::new(Some(env.clone()))` — 매 반복 자식 스코프 생성
+- **테스트**: `interpreter_examples.rs` — 2개 테스트 추가 (루프 내 바인딩 + 스코프 격리)

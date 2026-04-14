@@ -353,10 +353,15 @@ impl Interpreter {
                         .eval_expr(condition, env.clone())
                         .map_err(|err| err.with_fallback_span(condition_span.clone()))?;
                     match condition_value {
-                        Value::Bool(true) => match self.execute_block(body, env.clone())? {
-                            ExecSignal::Continue => {}
-                            signal @ ExecSignal::Return(_) => return Ok(signal),
-                        },
+                        Value::Bool(true) => {
+                            // P-4: 매 반복마다 자식 스코프를 생성하여 루프 내
+                            // 바인딩이 반복 간 충돌하지 않도록 한다.
+                            let iter_env = Environment::new(Some(env.clone()));
+                            match self.execute_block(body, iter_env)? {
+                                ExecSignal::Continue => {}
+                                signal @ ExecSignal::Return(_) => return Ok(signal),
+                            }
+                        }
                         Value::Bool(false) => break,
                         _ => {
                             return Err(RuntimeError::with_span(
