@@ -122,7 +122,7 @@ fn line_has_comparison_tail(tokens: &[Token], mut index: usize) -> bool {
     while let Some(token) = tokens.get(index) {
         match token.kind {
             TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
-            TokenKind::Than => {
+            TokenKind::Than | TokenKind::With => {
                 return tokens.get(index + 1).is_some_and(|next| {
                     next.kind == TokenKind::Ident
                         && matches!(

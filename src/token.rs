@@ -76,6 +76,7 @@ pub enum TokenKind {
     Direction,
     ResultMarker,
     Than,
+    With,
     Amount,
 }
 

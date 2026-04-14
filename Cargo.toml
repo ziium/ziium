@@ -19,3 +19,6 @@ wasm-bindgen = "0.2.114"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rustyline = "17.0.2"
 unicode-width = "0.2.2"
+
+[dev-dependencies]
+indoc = "2"

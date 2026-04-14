@@ -838,14 +838,15 @@ impl Parser {
 
     /// Look ahead to check if this is a Korean comparison pattern:
     /// `<expr> 가/이 <tokens...> 보다 크면/작으면/같으면/다르면`
+    /// `<expr> 가/이 <tokens...> 과/와/이랑/랑 같으면/다르면`
     fn is_korean_comparison(&self) -> bool {
         // Current position is at Subject (가/이).
-        // Scan forward to find Than (보다) followed by a comparison word.
+        // Scan forward to find Than (보다) or With (과/와/이랑/랑) followed by a comparison word.
         let mut i = self.pos + 1; // skip Subject
         while let Some(token) = self.tokens.get(i) {
             match token.kind {
                 TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
-                TokenKind::Than => {
+                TokenKind::Than | TokenKind::With => {
                     // Check if next token is a comparison word
                     return self.tokens.get(i + 1).is_some_and(|next| {
                         next.kind == TokenKind::Ident
@@ -863,16 +864,22 @@ impl Parser {
 
     /// Parse Korean comparison conditional:
     /// `<left>가/이 <right>보다 크면/작으면/같으면/다르면`
+    /// `<left>가/이 <right>과/와/이랑/랑 같으면/다르면`
     /// Produces Stmt::If with a Binary comparison condition.
     fn parse_korean_comparison(&mut self, left: Expr) -> Result<Stmt, ParseError> {
         self.advance(); // consume Subject (가/이)
 
         let right = self.parse_expression(0)?;
 
-        self.expect(
-            TokenKind::Than,
-            "한국어 비교문에서 `보다`가 필요합니다.",
-        )?;
+        let particle = self.advance().ok_or_else(|| {
+            self.error_here("한국어 비교문에서 `보다` 또는 `과/와/이랑/랑`이 필요합니다.")
+        })?;
+        if !matches!(particle.kind, TokenKind::Than | TokenKind::With) {
+            return Err(ParseError::new(
+                "한국어 비교문에서 `보다` 또는 `과/와/이랑/랑`이 필요합니다.",
+                Some(particle.span),
+            ));
+        }
 
         let cmp_token = self.advance().ok_or_else(|| {
             self.error_here("비교 서술어(`크면`, `작으면`, `같으면`, `다르면`)가 필요합니다.")
