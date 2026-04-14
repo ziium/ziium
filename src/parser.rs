@@ -2,7 +2,6 @@ use crate::ast::{BinaryOp, BinarySurface, Expr, Program, RecordEntry, Stmt, Unar
 use crate::error::{FrontendError, ParseError};
 use crate::lexer::lex;
 use crate::message::{KeywordMessage, keyword_message_for_selector};
-use crate::normalizer::normalize_tokens;
 use crate::token::{Span, Token, TokenKind};
 
 #[derive(Debug, Clone, Default)]
@@ -34,7 +33,10 @@ pub(crate) fn parse_source_with_metadata(
 pub(crate) fn parse_tokens_with_metadata(
     tokens: Vec<Token>,
 ) -> Result<(Program, ParseMetadata), ParseError> {
-    Parser::new(normalize_tokens(tokens)).parse_program()
+    // `lex()` already calls `normalize_tokens`, so tokens arriving here are
+    // already normalized.  Do NOT normalize again — double normalization can
+    // over-split identifiers (e.g. 고양이 → 고양 + 이).
+    Parser::new(tokens).parse_program()
 }
 
 struct Parser {

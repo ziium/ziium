@@ -337,3 +337,120 @@ fn reports_builtin_call_in_stack_trace() {
     assert!(message.contains("`길이` 호출: 2번째 줄 5번째 열"));
     assert!(message.contains("`시작` 호출: 4번째 줄 3번째 열"));
 }
+
+// ---------------------------------------------------------------------------
+// 단음절 식별자 (P-1: "가"/"이"를 변수/매개변수로 사용)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn allows_single_syllable_ga_as_variable() {
+    let source = "가는 10이다\n가를 출력한다";
+    assert_output(source, &["10"]);
+}
+
+#[test]
+fn allows_single_syllable_ga_as_parameter() {
+    let source = "더하기 함수는 가, 나를 받아\n  가 + 나를 돌려준다\n\n더하기(3, 7)을 출력한다";
+    assert_output(source, &["10"]);
+}
+
+#[test]
+fn allows_single_syllable_ee_as_variable() {
+    let source = "이는 5이다\n이를 출력한다";
+    assert_output(source, &["5"]);
+}
+
+#[test]
+fn preserves_subject_particle_after_number() {
+    let source = "3이 3과 같으면\n  \"예\"를 출력한다";
+    assert_output(source, &["예"]);
+}
+
+#[test]
+fn preserves_subject_particle_after_string() {
+    let source = r#""가"가 "가"와 같으면
+  "예"를 출력한다"#;
+    assert_output(source, &["예"]);
+}
+
+#[test]
+fn preserves_subject_particle_after_paren() {
+    let source = "(2 + 3)이 5와 같으면\n  \"예\"를 출력한다";
+    assert_output(source, &["예"]);
+}
+
+// ---------------------------------------------------------------------------
+// P-2: 다음절 식별자의 조사 접미사 오분리 방지 (하노이/고양이 등)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn allows_identifier_ending_in_ee() {
+    // "하노이"가 "하노"+"이"로 분리되지 않아야 함
+    let source = r#"하노이는 "탑"이다
+하노이를 출력한다"#;
+    assert_output(source, &["탑"]);
+}
+
+#[test]
+fn allows_identifier_ending_in_ga() {
+    // "요가"가 "요"+"가"로 분리되지 않아야 함
+    let source = r#"요가는 "운동"이다
+요가를 출력한다"#;
+    assert_output(source, &["운동"]);
+}
+
+#[test]
+fn allows_identifier_ending_in_eul_as_param() {
+    // "마을"이 "마"+"을"로 분리되지 않아야 함
+    let source = r#"마을은 "서울"이다
+마을을 출력한다"#;
+    assert_output(source, &["서울"]);
+}
+
+#[test]
+fn allows_identifier_ending_in_ee_in_function_def() {
+    // 함수 이름 "하노이"가 정의에서 분리되지 않아야 함
+    let source = r#"하노이 함수는 숫자를 받아
+  숫자를 돌려준다
+
+하노이(42)를 출력한다"#;
+    assert_output(source, &["42"]);
+}
+
+#[test]
+fn allows_identifier_ending_in_ee_in_comparison() {
+    // "고양이가 ... 같으면" — 주격 분리가 정상 작동
+    let source = r#"고양이는 "야옹"이다
+고양이가 "야옹"과 같으면
+  "맞다"를 출력한다"#;
+    assert_output(source, &["맞다"]);
+}
+
+// ---------------------------------------------------------------------------
+// P-3: 키워드 접미사("인") 무조건 분리 방지
+// ---------------------------------------------------------------------------
+
+#[test]
+fn allows_identifier_ending_in_in() {
+    // "확인"이 "확"+"인"으로 분리되지 않아야 함
+    let source = "확인 함수는 값을 받아\n  값을 돌려준다\n\n확인(42)를 출력한다";
+    assert_output(source, &["42"]);
+}
+
+#[test]
+fn allows_compound_identifier_ending_in_in() {
+    // "회문확인"이 "회문확"+"인"으로 분리되지 않아야 함
+    let source = "회문확인 함수는 글을 받아\n  글을 돌려준다\n\n회문확인(\"aba\")를 출력한다";
+    assert_output(source, &["aba"]);
+}
+
+#[test]
+fn splits_in_before_during_for_while_loop() {
+    // "길이인 동안" → "길이"+"인"+"동안"으로 정상 분리
+    let source = r#"숫자들은 [3, 5, 8]이다
+인덱스는 0이다
+인덱스 < 숫자들의 길이인 동안
+  숫자들[인덱스]을 출력한다
+  인덱스를 인덱스 + 1로 바꾼다"#;
+    assert_output(source, &["3", "5", "8"]);
+}

@@ -809,3 +809,263 @@ fn runs_transform_call_syntax() {
     "};
     assert_output(source, &["10"]);
 }
+
+// ===========================================================================
+// 배치 5: 조합 + 탐색 — Rosetta Code
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 조합: 여러 기능을 결합한 Rosetta 과제
+// ---------------------------------------------------------------------------
+
+// Rosetta: FizzBuzz
+// Python: for i in range(1,16): print("FizzBuzz" if i%15==0 ...)
+// Ruby:   (1..15).each { |i| puts ... }
+//
+// 반복 + 나머지 + 중첩 조건 + 문자열 출력
+#[test]
+fn runs_fizzbuzz() {
+    let source = indoc! {r#"
+        숫자는 1이다
+        숫자 <= 15인 동안
+          숫자 % 15 == 0이면
+            "FizzBuzz"를 출력한다
+          아니면
+            숫자 % 3 == 0이면
+              "Fizz"를 출력한다
+            아니면
+              숫자 % 5 == 0이면
+                "Buzz"를 출력한다
+              아니면
+                숫자를 출력한다
+          숫자를 숫자 + 1로 바꾼다
+    "#};
+    assert_output(
+        source,
+        &[
+            "1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13",
+            "14", "FizzBuzz",
+        ],
+    );
+}
+
+// Rosetta: Greatest common divisor — Euclidean algorithm
+// Python: def gcd(a,b): return a if b==0 else gcd(b, a%b)
+// Ruby:   def gcd(a,b) = b==0 ? a : gcd(b, a%b)
+//
+// 재귀 + 나머지 + 조건 + 다인자 함수
+#[test]
+fn runs_euclidean_gcd() {
+    let source = indoc! {"
+        최대공약수 함수는 큰수, 작은수를 받아
+          작은수 == 0이면
+            큰수를 돌려준다
+          최대공약수(작은수, 큰수 % 작은수)를 돌려준다
+
+        최대공약수(48, 18)을 출력한다
+        최대공약수(100, 75)를 출력한다
+    "};
+    assert_output(source, &["6", "25"]);
+}
+
+// Rosetta: Collatz conjecture — sequence length
+// Python: def collatz(n): steps=0; while n!=1: n=n//2 if n%2==0 else 3*n+1; steps+=1
+// Ruby:   def collatz(n) steps=0; while n!=1 do n=n.even? ? n/2 : 3*n+1; steps+=1 end; steps end
+//
+// while + 나머지 + 조건 + 함수 + 카운터
+#[test]
+fn runs_collatz_sequence_length() {
+    let source = indoc! {"
+        콜라츠 함수는 시작값을 받아
+          횟수는 0이다
+          현재는 시작값이다
+          현재 != 1인 동안
+            현재 % 2 == 0이면
+              현재를 현재 / 2로 바꾼다
+            아니면
+              현재를 현재 * 3 + 1로 바꾼다
+            횟수를 횟수 + 1로 바꾼다
+          횟수를 돌려준다
+
+        콜라츠(27)를 출력한다
+        콜라츠(1)을 출력한다
+    "};
+    assert_output(source, &["111", "0"]);
+}
+
+// Rosetta: Palindrome detection
+// Python: def is_palindrome(s): return s == s[::-1]
+// Ruby:   def palindrome?(s) = s == s.reverse
+//
+// 문자열 인덱싱 + 길이 + 반복 + 비교 + 함수
+#[test]
+fn runs_palindrome_check() {
+    let source = indoc! {r#"
+        회문검사 함수는 단어를 받아
+          왼쪽은 0이다
+          오른쪽은 단어의 길이 - 1이다
+          왼쪽 < 오른쪽인 동안
+            단어[왼쪽] != 단어[오른쪽]이면
+              거짓을 돌려준다
+            왼쪽을 왼쪽 + 1로 바꾼다
+            오른쪽을 오른쪽 - 1로 바꾼다
+          참을 돌려준다
+
+        회문검사("토마토")를 출력한다
+        회문검사("사과")를 출력한다
+        회문검사("기러기")를 출력한다
+    "#};
+    assert_output(source, &["참", "거짓", "참"]);
+}
+
+// Rosetta: Binary search
+// Python: bisect.bisect_left / manual implementation
+// Ruby:   bsearch
+//
+// 목록 + 반복 + 비교 + 함수 + 사전 선언 후 재대입
+#[test]
+fn runs_binary_search() {
+    let source = indoc! {"
+        이진탐색 함수는 목록, 찾는값을 받아
+          왼쪽은 0이다
+          오른쪽은 목록의 길이 - 1이다
+          중간은 0이다
+          왼쪽 <= 오른쪽인 동안
+            중간을 (왼쪽 + 오른쪽) / 2로 바꾼다
+            목록[중간] == 찾는값이면
+              중간을 돌려준다
+            목록[중간] < 찾는값이면
+              왼쪽을 중간 + 1로 바꾼다
+            아니면
+              오른쪽을 중간 - 1로 바꾼다
+          -1을 돌려준다
+
+        자료는 [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]이다
+        이진탐색(자료, 23)을 출력한다
+        이진탐색(자료, 99)를 출력한다
+    "};
+    assert_output(source, &["5", "-1"]);
+}
+
+// Rosetta: Classify numbers as perfect, abundant, or deficient
+// Python: def classify(n): s=sum(i for i in range(1,n) if n%i==0); ...
+// Ruby:   def classify(n) s=(1...n).select{|i|n%i==0}.sum; ... end
+//
+// 함수 + 나머지 + 반복 + 조건 캐스케이드 + 문자열 반환
+#[test]
+fn runs_number_classifier() {
+    let source = indoc! {r#"
+        분류 함수는 숫자를 받아
+          약수합은 0이다
+          나눔수는 1이다
+          나눔수 < 숫자인 동안
+            숫자 % 나눔수 == 0이면
+              약수합을 약수합 + 나눔수로 바꾼다
+            나눔수를 나눔수 + 1로 바꾼다
+          약수합 == 숫자이면
+            "완전수"를 돌려준다
+          약수합 > 숫자이면
+            "과잉수"를 돌려준다
+          "부족수"를 돌려준다
+
+        분류(6)를 출력한다
+        분류(12)를 출력한다
+        분류(7)을 출력한다
+    "#};
+    assert_output(source, &["완전수", "과잉수", "부족수"]);
+}
+
+// Rosetta: Towers of Hanoi
+// Python: def hanoi(n, src, dst, aux): ...
+// Ruby:   def hanoi(n, src, dst, aux) ... end
+//
+// 지음 고유: `호출한다` 이름 붙은 호출 + 재귀 + 레코드 축약
+#[test]
+fn runs_towers_of_hanoi() {
+    let source = indoc! {r#"
+        탑옮기기 함수는 원반수, 출발, 도착, 경유를 받아
+          원반수 == 1이면
+            출발을 출력한다
+            도착을 출력한다
+            0을 돌려준다
+          탑옮기기를 { 원반수: 원반수 - 1, 출발, 도착: 경유, 경유: 도착 }로 호출한다
+          출발을 출력한다
+          도착을 출력한다
+          탑옮기기를 { 원반수: 원반수 - 1, 출발: 경유, 도착, 경유: 출발 }로 호출한다
+          0을 돌려준다
+
+        탑옮기기(3, "A", "C", "B")를 출력한다
+    "#};
+    // 3개 원반: 7회 이동 (각 이동은 출발+도착 두 줄) + 최종 반환값 0
+    assert_output(
+        source,
+        &["A", "C", "A", "B", "C", "B", "A", "C", "B", "A", "B", "C", "A", "C", "0"],
+    );
+}
+
+// Rosetta: Exponentiation — iterative
+// Python: def power(b, e): r=1; for _ in range(e): r*=b; return r
+// Ruby:   def power(b, e) r=1; e.times{r*=b}; r end
+//
+// 반복 + 누적 + 함수
+#[test]
+fn runs_iterative_power() {
+    let source = indoc! {"
+        거듭제곱 함수는 밑, 지수를 받아
+          결과는 1이다
+          횟수는 0이다
+          횟수 < 지수인 동안
+            결과를 결과 * 밑으로 바꾼다
+            횟수를 횟수 + 1로 바꾼다
+          결과를 돌려준다
+
+        거듭제곱(2, 10)을 출력한다
+        거듭제곱(3, 4)를 출력한다
+    "};
+    assert_output(source, &["1024", "81"]);
+}
+
+// ---------------------------------------------------------------------------
+// 탐색: 미구현 기능이 필요한 Rosetta 과제 (#[ignore])
+// ---------------------------------------------------------------------------
+
+// Rosetta: Bubble sort
+// 필요 기능: 목록 인덱스 대입 — `목록[i]를 값으로 바꾼다`
+// 현재 지음은 목록 원소의 인덱스 기반 재대입을 지원하지 않음
+#[test]
+#[ignore]
+fn explore_bubble_sort() {
+    let source = indoc! {"
+        숫자들은 [5, 3, 8, 1, 9, 2]이다
+        크기는 숫자들의 길이이다
+        바깥은 0이다
+        바깥 < 크기 - 1인 동안
+          안쪽은 0이다
+          안쪽 < 크기 - 1 - 바깥인 동안
+            숫자들[안쪽] > 숫자들[안쪽 + 1]이면
+              임시는 숫자들[안쪽]이다
+              숫자들[안쪽]을 숫자들[안쪽 + 1]로 바꾼다
+              숫자들[안쪽 + 1]을 임시로 바꾼다
+            안쪽을 안쪽 + 1로 바꾼다
+          바깥을 바깥 + 1로 바꾼다
+        숫자들[0]을 출력한다
+        숫자들[5]를 출력한다
+    "};
+    assert_output(source, &["1", "9"]);
+}
+
+// Rosetta: For-each sum
+// 필요 기능: 컬렉션 반복 구문 — `각각 ... 에 대해` 또는 `for-each`
+// 현재 지음은 while + 인덱스 기반 순회만 지원
+#[test]
+#[ignore]
+fn explore_foreach_sum() {
+    let source = indoc! {"
+        숫자들은 [10, 20, 30, 40]이다
+        합계는 0이다
+        숫자들의 각각 항목에 대해
+          합계를 합계 + 항목으로 바꾼다
+        합계를 출력한다
+    "};
+    assert_output(source, &["100"]);
+}

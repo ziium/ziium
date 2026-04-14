@@ -504,7 +504,6 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
         "또는" => Some(TokenKind::Or),
         "아니다" => Some(TokenKind::Not),
         "은" | "는" => Some(TokenKind::Topic),
-        "이" | "가" => Some(TokenKind::Subject),
         "을" | "를" => Some(TokenKind::Object),
         "의" => Some(TokenKind::Gen),
         "에" => Some(TokenKind::Locative),
@@ -518,12 +517,13 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
 }
 
 fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
-    const KEYWORD_SUFFIXES: [(&str, TokenKind); 3] = [
+    // "인"은 여기서 제거 — normalizer가 "X인 동안" 문맥에서만 분리 (P-3)
+    const KEYWORD_SUFFIXES: [(&str, TokenKind); 2] = [
         ("이면", TokenKind::If),
         ("이다", TokenKind::Copula),
-        ("인", TokenKind::In),
     ];
-    const PARTICLES: [(&str, TokenKind); 17] = [
+    // "이"/"가" 주격 조사는 여기서 제거 — normalizer가 문맥 기반으로 처리 (P-2)
+    const PARTICLES: [(&str, TokenKind); 15] = [
         ("만큼", TokenKind::Amount),
         ("이랑", TokenKind::With),
         ("보다", TokenKind::Than),
@@ -531,8 +531,6 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
         ("에서", TokenKind::From),
         ("은", TokenKind::Topic),
         ("는", TokenKind::Topic),
-        ("이", TokenKind::Subject),
-        ("가", TokenKind::Subject),
         ("을", TokenKind::Object),
         ("를", TokenKind::Object),
         ("과", TokenKind::With),
@@ -569,7 +567,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 // are not incorrectly normalized into `나` + `이`. Parser-side helpers handle
 // a few high-value attached forms such as one-syllable print/assign targets.
 fn should_split_word(base: &str, suffix: &str) -> bool {
-    if matches!(suffix, "으로" | "은" | "는" | "이다" | "이면" | "인" | "보다" | "만큼") {
+    // "이다"/"이면"은 KEYWORD_SUFFIXES에서 처리하되 base_len >= 2 가드에 위임 (P-3).
+    // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.
+    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼") {
         return true;
     }
 
