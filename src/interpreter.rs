@@ -111,6 +111,8 @@ pub enum CanvasCommand {
     },
 }
 
+const MAX_CALL_DEPTH: usize = 64;
+
 struct Interpreter {
     globals: EnvRef,
     output: Vec<String>,
@@ -118,6 +120,7 @@ struct Interpreter {
     canvas_frames: Vec<CanvasFrame>,
     events: Vec<ExecutionEvent>,
     choose_fn: Option<Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>>,
+    call_depth: usize,
 }
 
 impl std::fmt::Debug for Interpreter {
@@ -127,6 +130,7 @@ impl std::fmt::Debug for Interpreter {
             .field("output", &self.output)
             .field("events", &self.events)
             .field("choose_fn", &self.choose_fn.as_ref().map(|_| "..."))
+            .field("call_depth", &self.call_depth)
             .finish()
     }
 }
@@ -226,6 +230,7 @@ impl Interpreter {
             canvas_frames: Vec::new(),
             events: Vec::new(),
             choose_fn: None,
+            call_depth: 0,
         }
     }
 
@@ -605,17 +610,29 @@ impl Interpreter {
                     )));
                 }
 
+                self.call_depth += 1;
+                if self.call_depth > MAX_CALL_DEPTH {
+                    self.call_depth -= 1;
+                    return Err(RuntimeError::new(
+                        "재귀 깊이 제한을 초과했습니다.",
+                    ));
+                }
+
                 let frame = Environment::new(Some(function.env.clone()));
                 for (param, arg) in function.params.iter().zip(args) {
                     frame.borrow_mut().values.insert(param.clone(), arg);
                 }
 
-                match self
+                let result = self
                     .execute_block(function.body.as_ref(), frame)
-                    .map_err(|err| err.with_call_frame(function.name.clone(), call_span))?
-                {
-                    ExecSignal::Continue => Ok(Value::None),
-                    ExecSignal::Return(value) => Ok(value),
+                    .map_err(|err| err.with_call_frame(function.name.clone(), call_span));
+
+                self.call_depth -= 1;
+
+                match result {
+                    Ok(ExecSignal::Continue) => Ok(Value::None),
+                    Ok(ExecSignal::Return(value)) => Ok(value),
+                    Err(err) => Err(err),
                 }
             }
             _ => Err(RuntimeError::new("호출할 수 없는 값을 호출했습니다.")),
