@@ -26,3 +26,6 @@ cargo run -- samples/00_hello_everyone.zm
 - `13_story.zm`: 한국어 비교, 상대적 변화, 선택 프레임을 보여주는 인터랙티브 텍스트 어드벤처
 - `14_foreach.zm`: `각각 ... 에 대해` for-each 반복문과 `있다` 바인딩 조합
 - `15_exist_binding.zm`: `에(는) ... 이/가 있다` 존재 바인딩
+- `16_type_conversion.zm`: `문자열로`, `정수로`, `실수로` 타입 변환
+- `17_mutable_vs_const.zm`: `이다`(불변)와 `넣는다`(가변) 바인딩 구분
+- `18_inline_if_else.zm`: 단문 if-else와 guard clause
