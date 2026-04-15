@@ -183,6 +183,14 @@ fn run_repl() -> Result<(), String> {
     run_repl_stream()
 }
 
+fn repl_history_path() -> Option<std::path::PathBuf> {
+    env::var("HOME").ok().map(|home| {
+        let dir = std::path::PathBuf::from(home).join(".ziium");
+        let _ = fs::create_dir_all(&dir);
+        dir.join("history")
+    })
+}
+
 fn run_repl_interactive() -> Result<(), String> {
     let mut editor = DefaultEditor::new().map_err(|err| {
         render_cli_error(
@@ -190,6 +198,10 @@ fn run_repl_interactive() -> Result<(), String> {
             format!("REPL 편집기를 시작하지 못했습니다: {err}"),
         )
     })?;
+    let history_path = repl_history_path();
+    if let Some(ref path) = history_path {
+        let _ = editor.load_history(path);
+    }
     let mut session = InterpreterSession::new();
     session.set_choose_fn(cli_choose);
     let mut buffer = Vec::new();
@@ -231,6 +243,10 @@ fn run_repl_interactive() -> Result<(), String> {
                 ));
             }
         }
+    }
+
+    if let Some(ref path) = history_path {
+        let _ = editor.save_history(path);
     }
 
     Ok(())
