@@ -157,3 +157,20 @@ fn cli_repl_runs_block_after_blank_line() {
         "안내: 다음 줄부터 두 칸 들여써 블록을 입력하세요. 빈 줄을 입력하면 실행합니다."
     ));
 }
+
+#[test]
+fn cli_prints_ast() {
+    let path = write_temp_program("이름은 \"철수\"이다");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["ast", path.to_str().expect("utf-8 path")])
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Bind"));
+    assert!(stdout.contains("이름"));
+
+    let _ = fs::remove_file(path);
+}
