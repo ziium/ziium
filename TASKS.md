@@ -270,3 +270,24 @@
 - [x] `docs/GRAMMAR.ebnf` — `exist_bind_stmt` 규칙 + `EXIST` 토큰 정의
 - [x] `docs/LANGUAGE.md` — 존재 바인딩 섹션 추가
 - [x] `docs/DECISIONS.md` — "존재 바인딩: `있다` = const syntactic sugar 채택" 기록
+
+## Plan 10: v0.3 Quality Gate ✅
+
+플랜: `.claude/plans/plan10-quality-gate.md`
+
+### Phase 1: 테스트 보강 ✅
+- [x] 샘플 통합 테스트 (19개 .zm 파일) + 깨진 샘플 3개 수정 (이다→넣는다)
+- [x] LexError 3종 테스트 (UnterminatedString, UnexpectedCharacter, InconsistentDedent)
+- [x] Choose 프레임 테스트 (기본, effect, 빈 목록, 비목록)
+- [x] Named call 에러 경로 테스트 (builtin 대상, 누락 파라미터, 초과 키)
+- [x] 빌트인 에러 경로 테스트 (정수로, 실수로, 맨뒤 꺼내기)
+- [x] CLI ast 서브커맨드 테스트
+
+### Phase 2: 유령 기능 문서화 + 누락 샘플 ✅
+- [x] 타입 변환 빌트인 문서 + 샘플 (`문자열로`/`정수로`/`실수로`)
+- [x] v0.3 누락 샘플 (넣는다/이다, inline if-else)
+
+### Phase 3: DX 개선 ✅
+- [x] `--version` / `--help` CLI 플래그
+- [x] REPL 히스토리 영속화 (`~/.ziium/history`)
+- [x] 낡은 주석 제거 + Clippy 수정
