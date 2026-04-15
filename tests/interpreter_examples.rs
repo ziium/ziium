@@ -703,3 +703,152 @@ fn rejects_reassign_on_const_binding() {
     let err = run_source(source).expect_err("should fail");
     assert!(err.to_string().contains("변경할 수 없습니다"));
 }
+
+// ---------------------------------------------------------------------------
+// for-each 반복문
+// ---------------------------------------------------------------------------
+
+#[test]
+fn runs_foreach_basic() {
+    let source = indoc! {"
+        과일들은 [\"사과\", \"배\", \"감\"]이다
+        과일들의 각각 과일에 대해
+          과일을 출력한다
+    "};
+    assert_output(source, &["사과", "배", "감"]);
+}
+
+#[test]
+fn runs_foreach_sum() {
+    let source = indoc! {"
+        숫자들은 [10, 20, 30, 40]이다
+        합계에 0을 넣는다
+        숫자들의 각각 항목에 대해
+          합계를 합계 + 항목으로 바꾼다
+        합계를 출력한다
+    "};
+    assert_output(source, &["100"]);
+}
+
+#[test]
+fn runs_foreach_empty_list() {
+    let source = indoc! {"
+        빈목록은 []이다
+        빈목록의 각각 항목에 대해
+          항목을 출력한다
+        \"끝\"을 출력한다
+    "};
+    assert_output(source, &["끝"]);
+}
+
+#[test]
+fn runs_foreach_scope_isolation() {
+    // 반복 변수는 블록 밖에서 접근 불가 — 외부 같은 이름 변수에 영향 없음
+    let source = indoc! {"
+        항목은 \"원래값\"이다
+        목록은 [1, 2, 3]이다
+        목록의 각각 항목에 대해
+          항목을 출력한다
+        항목을 출력한다
+    "};
+    assert_output(source, &["1", "2", "3", "원래값"]);
+}
+
+#[test]
+fn runs_foreach_mutable_outer() {
+    // 외부 가변 변수를 for-each 안에서 수정 가능
+    let source = indoc! {"
+        결과에 \"\"을 넣는다
+        단어들은 [\"안\", \"녕\", \"하\", \"세\", \"요\"]이다
+        단어들의 각각 글자에 대해
+          결과를 결과 + 글자로 바꾼다
+        결과를 출력한다
+    "};
+    assert_output(source, &["안녕하세요"]);
+}
+
+#[test]
+fn runs_foreach_nested() {
+    let source = indoc! {"
+        행들은 [1, 2]이다
+        열들은 [10, 20]이다
+        행들의 각각 행에 대해
+          열들의 각각 열에 대해
+            (행 * 100 + 열)을 출력한다
+    "};
+    assert_output(source, &["110", "120", "210", "220"]);
+}
+
+#[test]
+fn rejects_foreach_non_list() {
+    let source = indoc! {"
+        숫자는 42이다
+        숫자의 각각 항목에 대해
+          항목을 출력한다
+    "};
+    let err = run_source(source).expect_err("should fail on non-list");
+    assert!(err.to_string().contains("목록이어야"));
+}
+
+// ---------------------------------------------------------------------------
+// 존재 바인딩 (`있다`)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn runs_exist_binding_basic() {
+    let source = indoc! {"
+        바구니에 [1, 2, 3]이 있다
+        바구니를 출력한다
+    "};
+    assert_output(source, &["[1, 2, 3]"]);
+}
+
+#[test]
+fn runs_exist_binding_with_ga() {
+    let source = indoc! {"
+        상자에 \"보물\"가 있다
+        상자를 출력한다
+    "};
+    assert_output(source, &["보물"]);
+}
+
+#[test]
+fn rejects_exist_binding_reassign() {
+    let source = indoc! {"
+        바구니에 [1, 2, 3]이 있다
+        바구니를 [4, 5, 6]으로 바꾼다
+    "};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("변경할 수 없습니다"));
+}
+
+#[test]
+fn runs_exist_binding_with_topic() {
+    // `에는` 형태: `바구니에는 [...]이 있다`
+    let source = indoc! {"
+        바구니에는 [\"사과\", \"배\"]가 있다
+        바구니를 출력한다
+    "};
+    assert_output(source, &["[사과, 배]"]);
+}
+
+#[test]
+fn runs_mutable_bind_with_topic() {
+    // `에는` 형태: `횟수에는 0을 넣는다`
+    let source = indoc! {"
+        횟수에는 0을 넣는다
+        횟수를 횟수 + 1로 바꾼다
+        횟수를 출력한다
+    "};
+    assert_output(source, &["1"]);
+}
+
+#[test]
+fn runs_exist_binding_with_foreach() {
+    let source = indoc! {"
+        과일들에 [\"사과\", \"배\", \"감\"]이 있다
+        과일들의 각각 과일에 대해
+          과일을 출력한다
+    "};
+    assert_output(source, &["사과", "배", "감"]);
+}

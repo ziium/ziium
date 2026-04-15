@@ -513,6 +513,9 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
         "보다" => Some(TokenKind::Than),
         "과" | "와" | "이랑" | "랑" => Some(TokenKind::With),
         "만큼" => Some(TokenKind::Amount),
+        "있다" => Some(TokenKind::Exist),
+        "각각" => Some(TokenKind::Each),
+        "대해" => Some(TokenKind::About),
         _ => None,
     }
 }

@@ -167,6 +167,8 @@
 
 플랜: `.claude/plans/mutable-bind.md`
 
+플랜: `.claude/plans/mutable-bind.md`
+
 ### Phase A: `넣는다` 파이프라인 관통 (비파괴적) ✅
 
 #### 7-1. Token + Lexer + AST + HIR — 기반 구조 ✅
@@ -209,3 +211,62 @@
 - [x] `docs/GRAMMAR.ebnf` — `mutable_bind_stmt` 규칙 + `STORE` 토큰 정의
 - [x] `docs/LANGUAGE.md` — 불변 바인딩 / 가변 바인딩 / 재대입 섹션 분리
 - [x] `docs/DECISIONS.md` — "가변/불변 바인딩: 넣는다=let, 이다=const 채택" 기록
+
+## Plan 8: for-each 반복문 (`<컬렉션>의 각각 <변수>에 대해`) ✅
+
+### 8-1. Token + Lexer + AST + HIR — 기반 구조 ✅
+- [x] `src/token.rs`: `Each`, `About` variant 추가
+- [x] `src/lexer.rs`: `각각` → Each, `대해` → About 매핑
+- [x] `src/ast.rs`: `ForEach { collection, variable, body }` 추가
+- [x] `src/hir.rs`: `ForEach` HIR variant + `lower_stmt` + `Stmt::span()` match arm
+- [x] 컴파일 확인 (기존 224 테스트 전체 통과, 회귀 0)
+
+### 8-2. 파서 + Resolver + Interpreter ✅
+- [x] `src/parser.rs`: `parse_postfix`에서 Gen + Each 루카헤드 → break (property 파싱 방지)
+- [x] `src/parser.rs`: `parse_statement`에서 Gen + Each 감지 → for-each 파싱
+- [x] `src/resolver.rs`: 새 자식 스코프 push + 반복 변수 mutable 선언 + body 해석 + pop
+- [x] `src/interpreter.rs`: List 순회 + 매 반복 자식 스코프 + 변수 바인딩
+
+### 8-3. 테스트 ✅
+- [x] `runs_foreach_basic` — 기본 목록 순회 + 출력
+- [x] `runs_foreach_sum` — 합계 계산 (가변 외부 변수 수정)
+- [x] `runs_foreach_empty_list` — 빈 목록 → 0회 반복
+- [x] `runs_foreach_scope_isolation` — 반복 변수 스코프 격리 (외부 동명 변수 미영향)
+- [x] `runs_foreach_mutable_outer` — 외부 가변 변수 수정 가능
+- [x] `runs_foreach_nested` — 이중 for-each
+- [x] `rejects_foreach_non_list` — 비목록 → 런타임 에러
+- [x] `parses_foreach` — AST 구조 검증
+- [x] `explore_foreach_sum`에서 `#[ignore]` 제거 → 통과
+- [x] 전체 233 테스트 통과, 0 ignored, 회귀 0
+
+### 8-4. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `foreach_stmt` 규칙 + `EACH`, `ABOUT` 토큰 정의
+- [x] `docs/LANGUAGE.md` — for-each 반복문 섹션 추가
+- [x] `docs/DECISIONS.md` — "for-each 반복문: `각각 ... 에 대해` 채택" 기록
+
+## Plan 9: 존재 바인딩 (`X에(는) Y가/이 있다`) ✅
+
+### 9-1. Phase 1: MVP — `X에 Y가/이 있다` ✅
+- [x] `src/token.rs`: `Exist` variant 추가
+- [x] `src/lexer.rs`: `있다` → Exist 매핑
+- [x] `src/normalizer.rs`: `is_standalone_subject_particle` 확장 (Exist 꼬리 허용)
+- [x] `src/parser.rs`: Locative 분기에 Subject + Exist → `Bind { mutable: false }` 경로 추가
+
+### 9-2. Phase 2: Polish — `X에는 Y가/이 있다` ✅
+- [x] `src/normalizer.rs`: `split_locative_before_topic` + `line_has_bind_tail` 추가
+- [x] `src/parser.rs`: Locative 뒤 선택적 Topic 소비 (에는 형태 허용)
+
+### 9-3. 테스트 ✅
+- [x] `runs_exist_binding_basic` — `바구니에 [1,2,3]이 있다` → 출력 확인
+- [x] `runs_exist_binding_with_ga` — `상자에 "보물"가 있다` (가 particle)
+- [x] `rejects_exist_binding_reassign` — const 체크
+- [x] `runs_exist_binding_with_foreach` — `있다` + for-each 조합
+- [x] `runs_exist_binding_with_topic` — `에는` 형태
+- [x] `runs_mutable_bind_with_topic` — `에는` 가변 바인딩 부수 효과
+- [x] `parses_exist_binding` — AST 구조 검증
+- [x] 전체 240 테스트 통과, 0 ignored, 회귀 0
+
+### 9-4. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `exist_bind_stmt` 규칙 + `EXIST` 토큰 정의
+- [x] `docs/LANGUAGE.md` — 존재 바인딩 섹션 추가
+- [x] `docs/DECISIONS.md` — "존재 바인딩: `있다` = const syntactic sugar 채택" 기록

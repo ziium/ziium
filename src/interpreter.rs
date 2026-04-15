@@ -421,6 +421,35 @@ impl Interpreter {
                 }
                 Ok(ExecSignal::Continue)
             }
+            Stmt::ForEach {
+                collection,
+                variable,
+                body,
+                ..
+            } => {
+                let collection_span = collection.span().cloned().or_else(|| stmt_span.clone());
+                let collection_value = self
+                    .eval_expr(collection, env.clone())
+                    .map_err(|err| err.with_fallback_span(collection_span.clone()))?;
+                let items = match &collection_value {
+                    Value::List(list) => list.borrow().clone(),
+                    _ => {
+                        return Err(RuntimeError::with_span(
+                            "반복 대상은 목록이어야 합니다.",
+                            collection_span,
+                        ));
+                    }
+                };
+                for item in items {
+                    let iter_env = Environment::new(Some(env.clone()));
+                    iter_env.borrow_mut().values.insert(variable.clone(), item);
+                    match self.execute_block(body, iter_env)? {
+                        ExecSignal::Continue => {}
+                        signal @ ExecSignal::Return(_) => return Ok(signal),
+                    }
+                }
+                Ok(ExecSignal::Continue)
+            }
             Stmt::FunctionDef {
                 name, params, body, ..
             } => {

@@ -79,6 +79,9 @@ pub enum TokenKind {
     With,
     Amount,
     Store,
+    Exist,
+    Each,
+    About,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

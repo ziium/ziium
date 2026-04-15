@@ -158,6 +158,15 @@ impl Resolver {
                 self.resolve_expr(condition)?;
                 self.resolve_loop(body)
             }
+            Stmt::ForEach {
+                collection,
+                variable,
+                body,
+                ..
+            } => {
+                self.resolve_expr(collection)?;
+                self.resolve_foreach(variable, body)
+            }
             Stmt::FunctionDef {
                 name,
                 name_span,
@@ -257,6 +266,18 @@ impl Resolver {
 
     fn resolve_loop(&mut self, body: &[Stmt]) -> Result<(), ResolveError> {
         self.resolve_branch_scope(body).map(|_| ())
+    }
+
+    fn resolve_foreach(&mut self, variable: &str, body: &[Stmt]) -> Result<(), ResolveError> {
+        let eventual_names = collect_unconditional_names(body);
+        self.scopes.push(Scope {
+            defined_now: HashMap::new(),
+            defined_eventually: eventual_names,
+        });
+        self.declare(variable, None, true)?;
+        let result = self.resolve_statements(body);
+        self.scopes.pop();
+        result
     }
 
     fn resolve_branch_scope(&mut self, statements: &[Stmt]) -> Result<Scope, ResolveError> {
@@ -404,7 +425,8 @@ fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {
             | Stmt::Return { .. }
             | Stmt::Expr { .. }
             | Stmt::If { .. }
-            | Stmt::While { .. } => {}
+            | Stmt::While { .. }
+            | Stmt::ForEach { .. } => {}
         }
     }
 

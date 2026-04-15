@@ -52,6 +52,12 @@ pub enum Stmt {
         body: Vec<Stmt>,
         span: Option<Span>,
     },
+    ForEach {
+        collection: Expr,
+        variable: String,
+        body: Vec<Stmt>,
+        span: Option<Span>,
+    },
     FunctionDef {
         name: String,
         name_span: Option<Span>,
@@ -208,6 +214,7 @@ impl Stmt {
             | Stmt::Return { span, .. }
             | Stmt::If { span, .. }
             | Stmt::While { span, .. }
+            | Stmt::ForEach { span, .. }
             | Stmt::FunctionDef { span, .. }
             | Stmt::Send { span, .. }
             | Stmt::NamedCall { span, .. }
@@ -320,6 +327,23 @@ fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
                 .collect();
             Stmt::While {
                 condition,
+                body,
+                span: cursor.next_statement_span(),
+            }
+        }
+        ast::Stmt::ForEach {
+            collection,
+            variable,
+            body,
+        } => {
+            let collection = lower_expr(collection, cursor);
+            let body = body
+                .iter()
+                .map(|statement| lower_stmt(statement, cursor))
+                .collect();
+            Stmt::ForEach {
+                collection,
+                variable: variable.clone(),
                 body,
                 span: cursor.next_statement_span(),
             }

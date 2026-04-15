@@ -1054,10 +1054,7 @@ fn explore_bubble_sort() {
 }
 
 // Rosetta: For-each sum
-// 필요 기능: 컬렉션 반복 구문 — `각각 ... 에 대해` 또는 `for-each`
-// 현재 지음은 while + 인덱스 기반 순회만 지원
 #[test]
-#[ignore]
 fn explore_foreach_sum() {
     let source = indoc! {"
         숫자들은 [10, 20, 30, 40]이다

@@ -100,10 +100,60 @@ impl Parser {
                     condition: expr,
                     body,
                 }
+            } else if self.at(TokenKind::Gen)
+                && self.nth_kind(1) == Some(TokenKind::Each)
+            {
+                self.advance(); // consume Gen (의)
+                self.advance(); // consume Each (각각)
+                let var = self.expect_ident_token(
+                    "`각각` 뒤에는 반복 변수 이름이 필요합니다.",
+                )?;
+                self.metadata
+                    .declaration_spans
+                    .push(var.span.clone());
+                self.expect(
+                    TokenKind::Locative,
+                    "반복 변수 뒤에는 `에`가 와야 합니다.",
+                )?;
+                self.expect(
+                    TokenKind::About,
+                    "`에` 뒤에는 `대해`가 와야 합니다.",
+                )?;
+                let body = self.parse_indented_block(
+                    "`에 대해` 뒤에는 들여쓴 블록이 와야 합니다.",
+                )?;
+                Stmt::ForEach {
+                    collection: expr,
+                    variable: var.lexeme,
+                    body,
+                }
             } else if self.match_kind(TokenKind::Locative) {
+                self.match_kind(TokenKind::Topic); // 선택적: `에는` 형태 지원
                 let name_spans_end = self.metadata.expr_spans.len();
                 let arg_or_value = self.parse_expression_without_transform(0)?;
-                if self.match_kind(TokenKind::Object) {
+                if self.match_kind(TokenKind::Subject) {
+                    // 존재 바인딩: `바구니에 [1,2,3]이 있다`
+                    self.expect(
+                        TokenKind::Exist,
+                        "`이`/`가` 뒤에는 `있다`가 와야 합니다.",
+                    )?;
+                    let name = match expr {
+                        Expr::Name(name) => name,
+                        _ => {
+                            return Err(
+                                self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")
+                            )
+                        }
+                    };
+                    let name_span = self.metadata.expr_spans.remove(name_spans_end - 1);
+                    self.metadata.declaration_spans.push(name_span);
+                    self.consume_optional_period();
+                    Stmt::Bind {
+                        name,
+                        value: arg_or_value,
+                        mutable: false,
+                    }
+                } else if self.match_kind(TokenKind::Object) {
                     // 가변 바인딩: `횟수에 0을 넣는다`
                     self.expect(
                         TokenKind::Store,
@@ -658,6 +708,10 @@ impl Parser {
                 };
                 self.metadata.expr_spans.push(token.span);
                 continue;
+            }
+
+            if self.at(TokenKind::Gen) && self.nth_kind(1) == Some(TokenKind::Each) {
+                break;
             }
 
             if let Some(token) = self.match_token(TokenKind::Gen) {

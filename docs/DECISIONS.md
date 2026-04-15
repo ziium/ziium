@@ -720,3 +720,69 @@ v0.2 이후 호출 문법 연구는 "괄호 호출을 한국어 단어로 치환
 - `src/resolver.rs`: `defined_now: HashMap<String, bool>` + `check_mutable` + `FunctionDef`/params 가변 등록
 - `src/interpreter.rs`: `Environment.immutable: HashSet<String>` + `assign_value` 불변 체크
 - 테스트 20+ 개 `이다` → `넣는다` 마이그레이션
+
+## 2026-04-15 - for-each 반복문: `<컬렉션>의 각각 <변수>에 대해` 채택
+
+### 결정 내용
+
+목록 순회를 위한 for-each 반복문을 `<컬렉션>의 각각 <변수>에 대해` 형태로 도입한다. 별도 AST 노드 `ForEach`로 구현하며, while + 인덱스 기반 desugaring은 채택하지 않는다.
+
+### 이유
+
+- while + 인덱스 패턴은 4줄의 보일러플레이트(인덱스 초기화, 길이 비교, 증감, 인덱싱)가 필요하다.
+- for-each는 제어 구문이므로 닫힌 메시지 집합을 열지 않는다.
+- `각각 ... 에 대해` 구문은 비모호하고, 한국어 형식적 표현에 적합하다.
+
+### 설계 세부사항
+
+- `각각`과 `대해`는 새 키워드 토큰(Each, About)으로 등록.
+- 반복 변수는 for-each 블록의 새 자식 스코프에 mutable로 선언 (함수 스코프와 유사).
+- 매 반복마다 자식 스코프 생성 (P-4 while 패턴과 동일).
+- 현재 순회 대상은 목록만 허용. 목록이 아닌 값은 런타임 에러.
+- 인덱스+값 동시 바인딩은 향후 확장으로 남김.
+
+### 대안
+
+- `X에서 Y마다` — 더 자연스럽지만 `마다` 조사 충돌 우려
+- while + index로의 desugaring — 표면 보일러플레이트 노출, 한국어다운 코드에 역행
+
+### 영향
+
+- `src/token.rs`: `Each`, `About` variant 추가
+- `src/lexer.rs`: `각각` → Each, `대해` → About 매핑
+- `src/ast.rs`, `src/hir.rs`: `ForEach` variant 추가
+- `src/parser.rs`: Gen + Each 루카헤드로 for-each 감지, `parse_postfix`에서 property 파싱 방지
+- `src/resolver.rs`: 새 자식 스코프에 반복 변수 선언
+- `src/interpreter.rs`: List 순회 + 매 반복 자식 스코프 + 변수 바인딩
+
+## 2026-04-15 - 존재 바인딩: `X에(는) Y가/이 있다` 채택
+
+### 결정 내용
+
+`이다` 바인딩의 대안 표면 문법으로 `있다`(존재동사)를 도입한다. `X에 Y가 있다` 및 `X에는 Y가 있다` 두 형태를 모두 지원한다.
+
+### 이유
+
+- `바구니에 사과가 있다`는 `바구니는 사과이다`보다 컬렉션 맥락에서 자연스러운 한국어이다.
+- 의미적으로 `이다`(정의)와 `있다`(존재)는 다르지만, 프로그래밍 언어에서 바인딩이라는 점은 동일하다.
+- `있다`는 const(불변)로 처리 — 존재 서술은 상태 변경이 아니다.
+
+### 설계 세부사항
+
+- `있다`는 새 키워드 토큰 `Exist`로 등록.
+- `이/가` subject particle은 normalizer에서 `Exist` 꼬리가 있을 때 `Subject`로 재분류 (기존 비교 꼬리 패턴 확장).
+- `에는` 복합 조사는 normalizer에서 `Ident("X에") + Topic("는")` → `Ident("X") + Locative("에")` 분리 (P-3 `split_in_before_during` 패턴 재사용).
+- 파서에서 Locative 뒤 선택적 Topic 소비 → `에는` 형태 허용 (가변 바인딩 `넣는다`에도 적용).
+- 새 AST variant 없음 — 기존 `Stmt::Bind { mutable: false }` 재사용.
+
+### 대안
+
+- 새 AST variant `ExistBind` — `이다`와 동일 의미이므로 과설계
+- `있다` = mutable — 존재 서술은 상태 변경이 아니므로 const가 적합
+
+### 영향
+
+- `src/token.rs`: `Exist` variant 추가
+- `src/lexer.rs`: `있다` → Exist 매핑
+- `src/normalizer.rs`: `is_standalone_subject_particle` 확장 + `split_locative_before_topic` 추가
+- `src/parser.rs`: Locative 분기에 Subject + Exist 경로 추가, 선택적 Topic 소비

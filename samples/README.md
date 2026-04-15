@@ -24,3 +24,5 @@ cargo run -- samples/00_hello_everyone.zm
 - `11_hanoi_ziium_style.zm`: `의`, `으로`, 단어 연산을 섞은 더 문장형 예제
 - `12_canvas_hanoi.zm`: `그림판에 { ... }으로/로 ...`를 직접 호출하는 캔버스 하노이탑
 - `13_story.zm`: 한국어 비교, 상대적 변화, 선택 프레임을 보여주는 인터랙티브 텍스트 어드벤처
+- `14_foreach.zm`: `각각 ... 에 대해` for-each 반복문과 `있다` 바인딩 조합
+- `15_exist_binding.zm`: `에(는) ... 이/가 있다` 존재 바인딩

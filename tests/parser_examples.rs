@@ -728,3 +728,37 @@ fn parses_index_assignment_with_expression_index() {
         }]
     );
 }
+
+#[test]
+fn parses_foreach() {
+    let source = "목록의 각각 항목에 대해\n  항목을 출력한다";
+    let program = parse_source(source).expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::ForEach {
+            collection: Expr::Name("목록".into()),
+            variable: "항목".into(),
+            body: vec![Stmt::Print {
+                value: Expr::Name("항목".into()),
+            }],
+        }]
+    );
+}
+
+#[test]
+fn parses_exist_binding() {
+    let program =
+        parse_source("바구니에 [1, 2, 3]이 있다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "바구니".into(),
+            value: Expr::List(vec![
+                Expr::Int("1".into()),
+                Expr::Int("2".into()),
+                Expr::Int("3".into()),
+            ]),
+            mutable: false,
+        }]
+    );
+}

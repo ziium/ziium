@@ -56,6 +56,11 @@ pub enum Stmt {
         index: Expr,
         value: Expr,
     },
+    ForEach {
+        collection: Expr,
+        variable: String,
+        body: Vec<Stmt>,
+    },
     Expr(Expr),
 }
 

@@ -90,6 +90,35 @@ pub fn normalize_tokens(tokens: Vec<Token>) -> Vec<Token> {
             continue;
         }
 
+        // `Ident("X에")` + `Topic("는")` + ... + `Exist("있다")` 또는
+        // `Ident("X에")` + `Topic("는")` + ... + `Store("넣는다")` →
+        // `Ident("X") + Locative("에")` 분리
+        if let Some((base, base_len)) = split_locative_before_topic(&tokens, index) {
+            let token = &tokens[index];
+            normalized.push(Token::new(
+                TokenKind::Ident,
+                base,
+                Span::new(
+                    token.span.start_line,
+                    token.span.start_column,
+                    token.span.start_line,
+                    token.span.start_column + base_len,
+                ),
+            ));
+            normalized.push(Token::new(
+                TokenKind::Locative,
+                "에",
+                Span::new(
+                    token.span.start_line,
+                    token.span.start_column + base_len,
+                    token.span.end_line,
+                    token.span.end_column,
+                ),
+            ));
+            index += 1;
+            continue;
+        }
+
         // P-1: 독립 Ident("가"/"이")가 비교 꼬리 앞에 오면 Subject로 재분류
         if is_standalone_subject_particle(&tokens, index) {
             let token = &tokens[index];
@@ -262,8 +291,11 @@ fn is_standalone_subject_particle(tokens: &[Token], index: usize) -> bool {
         return false;
     }
 
-    // "가"/"이" 뒤에 비교 꼬리가 있는지
+    // "가"/"이" 뒤에 비교 꼬리가 있는지, 또는 `있다`가 있는지
     line_has_comparison_tail(tokens, index + 1)
+        || tokens
+            .get(index + 1)
+            .is_some_and(|t| t.kind == TokenKind::Exist)
 }
 
 /// P-3: `Ident("X인")` 바로 뒤에 `During("동안")`이 오면 "인"을 분리한다.
@@ -286,6 +318,41 @@ fn split_in_before_during(tokens: &[Token], index: usize) -> Option<(String, usi
     }
     let base_len = base.chars().count();
     Some((base.to_string(), base_len))
+}
+
+/// `Ident("X에")` + `Topic("는"/"은")` → `Ident("X") + Locative("에")` 분리.
+/// 라인에 `Exist("있다")` 또는 `Store("넣는다"/"넣고")` 꼬리가 있는 경우에만 분리한다.
+fn split_locative_before_topic(tokens: &[Token], index: usize) -> Option<(String, usize)> {
+    let token = tokens.get(index)?;
+    if token.kind != TokenKind::Ident {
+        return None;
+    }
+    let base = token.lexeme.strip_suffix("에")?;
+    if base.is_empty() {
+        return None;
+    }
+    if !tokens
+        .get(index + 1)
+        .is_some_and(|t| t.kind == TokenKind::Topic)
+    {
+        return None;
+    }
+    if !line_has_bind_tail(tokens, index + 2) {
+        return None;
+    }
+    let base_len = base.chars().count();
+    Some((base.to_string(), base_len))
+}
+
+fn line_has_bind_tail(tokens: &[Token], mut index: usize) -> bool {
+    while let Some(token) = tokens.get(index) {
+        match token.kind {
+            TokenKind::Newline | TokenKind::Dedent | TokenKind::Eof => return false,
+            TokenKind::Exist | TokenKind::Store => return true,
+            _ => index += 1,
+        }
+    }
+    false
 }
 
 fn line_has_keyword_message_tail(tokens: &[Token], mut index: usize) -> bool {
