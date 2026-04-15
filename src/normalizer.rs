@@ -173,11 +173,10 @@ fn split_attached_statement_suffix(lexeme: &str) -> Option<(String, TokenKind, &
         ("가", TokenKind::Subject),
         ("에", TokenKind::Locative),
     ] {
-        if let Some(base) = lexeme.strip_suffix(suffix) {
-            if !base.is_empty() {
+        if let Some(base) = lexeme.strip_suffix(suffix)
+            && !base.is_empty() {
                 return Some((base.to_string(), kind, suffix));
             }
-        }
     }
 
     None
@@ -256,11 +255,10 @@ fn split_object_before_keyword(
     // 다음절 base(예: "마을")는 렉서의 split_attached_word가 이미 처리했거나,
     // should_split_word 가드에 의해 의도적으로 보존된 것이므로 건드리지 않는다.
     for (suffix, kind) in [("을", TokenKind::Object), ("를", TokenKind::Object)] {
-        if let Some(base) = token.lexeme.strip_suffix(suffix) {
-            if !base.is_empty() && base.chars().count() == 1 {
+        if let Some(base) = token.lexeme.strip_suffix(suffix)
+            && !base.is_empty() && base.chars().count() == 1 {
                 return Some((base.to_string(), kind, suffix));
             }
-        }
     }
     None
 }

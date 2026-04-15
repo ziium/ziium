@@ -28,11 +28,10 @@ fn cli_choose(options: &[Value]) -> Result<Value, RuntimeError> {
     let input = input.trim();
 
     // 번호로 선택
-    if let Ok(n) = input.parse::<usize>() {
-        if n >= 1 && n <= options.len() {
+    if let Ok(n) = input.parse::<usize>()
+        && n >= 1 && n <= options.len() {
             return Ok(options[n - 1].clone());
         }
-    }
 
     // 텍스트로 선택
     for (i, text) in rendered.iter().enumerate() {

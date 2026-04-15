@@ -556,8 +556,8 @@ impl<'a> LexerJa<'a> {
         // For hiragana segments, try to split off a trailing keyword or particle.
         // This handles okurigana (送り仮名): e.g. さを → さ(Ident) + を(Object)
         // Analogous to Korean split_attached_word.
-        if start_class == ScriptClass::Hiragana {
-            if let Some((base_chars, kind)) = split_trailing_suffix(&segment) {
+        if start_class == ScriptClass::Hiragana
+            && let Some((base_chars, kind)) = split_trailing_suffix(&segment) {
                 let split_pos = index + base_chars;
                 let base: String = chars[index..split_pos].iter().collect();
                 let suffix: String = chars[split_pos..end].iter().collect();
@@ -573,7 +573,6 @@ impl<'a> LexerJa<'a> {
                 ));
                 return Ok(end);
             }
-        }
 
         self.tokens.push(Token::new(
             TokenKind::Ident,
