@@ -253,3 +253,22 @@ fn reports_tab_indentation() {
     let err = lex("참이면\n\t\"성인\"을 출력한다").expect_err("tab indentation should fail");
     assert!(matches!(err, LexError::TabIndentation { .. }));
 }
+
+#[test]
+fn rejects_unterminated_string() {
+    let err = lex("이름은 \"철수이다").expect_err("unterminated string should fail");
+    assert!(matches!(err, LexError::UnterminatedString { .. }));
+}
+
+#[test]
+fn rejects_unexpected_character() {
+    let err = lex("@이름은 1이다").expect_err("unexpected character should fail");
+    assert!(matches!(err, LexError::UnexpectedCharacter { ch: '@', .. }));
+}
+
+#[test]
+fn rejects_inconsistent_dedent() {
+    let source = "참이면\n    \"안\"을 출력한다\n  \"밖\"을 출력한다";
+    let err = lex(source).expect_err("inconsistent dedent should fail");
+    assert!(matches!(err, LexError::InconsistentDedent { .. }));
+}
