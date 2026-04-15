@@ -1,31 +1,24 @@
+<div align="center">
+
 # 지음 (ziium)
 
-지음은 한국어 문장 구조를 중심에 둔 프로그래밍 언어다. 목표는 기존 언어의 키워드를 한글로 번역하는 것이 아니라, 한국어 화자가 읽고 쓰는 흐름에 더 가까운 코드 표면 문법을 만드는 것이다.
+**한국어 문장 구조를 중심에 둔 프로그래밍 언어**
 
-현재 최신 버전은 v0.3이다. v0.1 코어 위에 v0.2에서 메시지 프레임 연구 원칙이 고정되었고, v0.3에서 가변/불변 바인딩, for-each, 단문 if-else 등 코어 문법이 확장되었다. 버전별 구분은 `HISTORY.md`에 정리한다.
+한글 키워드 번역이 아니라, 한국어 화자가 읽고 쓰는 흐름에 가까운 코드를 만든다.
 
-## 왜 만드는가
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.3-brightgreen.svg)](HISTORY.md)
+[![Rust 2024](https://img.shields.io/badge/rust-2024_edition-orange.svg)](https://www.rust-lang.org/)
 
-- 한국어 화자가 코드를 읽을 때 겪는 언어적 이질감을 줄인다.
-- 교육용 언어가 아니라도 자연스러운 한국어 문장 흐름을 일부 보존할 수 있는지 검증한다.
-- AI 에이전트와 사람이 같은 명세를 보고 안정적으로 언어 구현을 함께 진행할 수 있게 한다.
+[문법 명세](docs/LANGUAGE.md) · [예제 모음](samples/README.md) · [브라우저 Playground](#브라우저-playground)
 
-## 핵심 방향
+</div>
 
-- 문장은 한국어답게 보이되 내부 표현은 엄격해야 한다.
-- v0.1은 자연어 이해가 아니라 명시적이고 예측 가능한 문법을 택한다.
-- 표현식 내부에서는 일부 기호 연산을 허용해 구현 난도를 통제한다.
-- 조사와 서술어는 장식이 아니라 의미를 구분하는 문법 요소로 취급한다.
+<br>
 
-## 맛보기 예제
-
-가장 짧은 예제부터 메시지 스타일 예제까지, 지금 구현으로 바로 실행되는 형태만 골랐다.
-
-```txt
+```
 이름은 "철수"이다.
 나이는 20이다.
-
-나이를 출력한다.
 
 나이 > 19이면
   "성인이다"를 출력한다.
@@ -33,7 +26,26 @@
   "미성년자이다"를 출력한다.
 ```
 
-```txt
+---
+
+## 왜 만드는가
+
+- 한국어 화자가 코드를 읽을 때 겪는 **언어적 이질감**을 줄인다.
+- 자연스러운 한국어 문장 흐름을 일부 보존할 수 있는지 **검증**한다.
+- AI 에이전트와 사람이 같은 명세로 언어 구현을 함께 **진행**할 수 있게 한다.
+
+## 핵심 방향
+
+| 원칙 | 설명 |
+|------|------|
+| 한국어다운 문장 | 표면은 한국어 문장형, 내부 표현은 엄격 |
+| 예측 가능한 문법 | 자연어 이해가 아니라 명시적 규칙 |
+| 조사는 문법 요소 | `을/를`, `에`, `으로` 등은 장식이 아니라 의미 구분자 |
+| 통제된 기호 사용 | 표현식 내부에서 일부 기호 연산 허용 |
+
+## 맛보기
+
+```
 인사만들기 함수는 이름을 받아
   "안녕, " + 이름 + "!"을 돌려준다.
 
@@ -41,41 +53,13 @@
 문장을 출력한다.
 ```
 
-```txt
-이름은 "영희"이다.
-사람은 { 이름, 나이: 18 }이다.
-사람의 이름을 출력한다.
 ```
-
-```txt
-합은 7 더하기 8이다.
-합을 출력한다.
-
-결과는 5의 제곱이다.
-결과를 출력한다.
-
-과일들은 ["사과", "배"]이다.
-과일들에 "감" 추가.
-과일들의 길이를 출력한다.
-```
-
-```txt
 그림판에 { 배경색: "#f6efe2" }으로 지우기.
 그림판에 { x: 120, y: 80, 색: 빨강 }으로 점찍기.
 그림판에 { 글: "지음", x: 160, y: 60, 색: "#3b2f2f", 크기: 24 }로 글자쓰기.
 ```
 
-```txt
-숫자들은 [3, 5, 8]이다.
-인덱스는 0이다.
-
-인덱스 < 숫자들의 길이인 동안
-  숫자들[인덱스]을 출력한다.
-  0.5초 쉬기.
-  인덱스를 인덱스 + 1로 바꾼다.
 ```
-
-```txt
 체력은 100이다.
 체력이 50보다 크면
   "안전하다"를 출력한다.
@@ -85,107 +69,98 @@
 선택을 출력한다.
 ```
 
-더 많은 실행 예제는 [samples/README.md](./samples/README.md)에 정리되어 있다. 인터랙티브 텍스트 어드벤처 예제는 `samples/13_story.zm`에 있다.
+> 19개 샘플 전체는 [samples/README.md](samples/README.md)에 정리되어 있다.
+> 인터랙티브 텍스트 어드벤처는 `samples/13_story.zm`.
 
 ## 현재 범위 (v0.3)
 
-- 불변 바인딩(`이다` = const)과 가변 바인딩(`넣는다` = let)
-- 숫자, 문자열, 불리언, 목록, 레코드
-- 출력, 쉬기
-- 조건문(블록/단문 if-else)과 반복문(while, for-each)
-- 함수 정의와 호출, 적용 바인딩(`X를 Y한 것이다`)
-- 리스트 인덱스 대입(`목록[i]를 값으로 바꾼다`)
-- 존재 바인딩(`X에 Y가 있다`)
-- `의`를 이용한 속성 접근
-- 타입 변환(`문자열로`, `정수로`, `실수로`)
-- 인터프리터 기준 실행 모델
-- 한국어 오류 메시지 원칙
+v0.1 코어 위에 v0.2에서 메시지 프레임 연구 원칙이 고정되었고, v0.3에서 코어 문법이 확장되었다.
 
-## 문서 안내
+| 범주 | 내용 |
+|------|------|
+| 바인딩 | 불변(`이다` = const), 가변(`넣는다` = let) |
+| 자료형 | 숫자, 문자열, 불리언, 목록, 레코드 |
+| 제어 흐름 | 블록/단문 if-else, while, for-each |
+| 함수 | 정의, 호출, 적용 바인딩(`X를 Y한 것이다`) |
+| 연산 | `의` 속성 접근, 인덱스 대입, 타입 변환 |
+| 실험 프레임 | `X으로 Y`, `X 더하기 Y`, `대상에 값 추가`, `에서 고른 것이다` 등 |
+| 기반 | 인터프리터 실행 모델, 한국어 오류 메시지 |
 
-- [LANGUAGE.md](./docs/LANGUAGE.md): 언어 철학, 문법, 의미, 메시지 경계
-- [GRAMMAR.ebnf](./docs/GRAMMAR.ebnf): 파서 구현용 형식 문법
-- [IMPLEMENTATION.md](./docs/IMPLEMENTATION.md): 구현 구조, 테스트, 작업 순서
-- [DECISIONS.md](./docs/DECISIONS.md): 주요 설계 결정 기록
-- [HISTORY.md](./HISTORY.md): `v0.1`, `v0.2`, `v0.3` 단계 구분과 버전별 변화 요약
-- [samples/README.md](./samples/README.md): 바로 실행할 수 있는 샘플 프로그램 모음
-- [AGENTS.md](./AGENTS.md): AI 에이전트용 작업 규칙
+> 버전별 변화는 [HISTORY.md](HISTORY.md), 설계 결정 기록은 [DECISIONS.md](docs/DECISIONS.md).
 
-## 현재 상태
-
-현재는 Rust 기반의 최소 `lexer + parser + normalizer + resolver + hir lowering + interpreter + CLI` 골격이 들어가 있다. 문서 초안만 있는 단계는 지났고, 문서에 맞춘 기본 실행 경로와 테스트 세트가 함께 유지되고 있다.
-
-안정된 코어 문법 위에 몇 가지 실험 프레임도 함께 들어가 있다. 현재 실험 프레임은 `X으로 Y`, `X 더하기 Y`, `<대상>에 <값> 동작`, `<함수>를 <레코드>로 호출한다`, `...에서 맨위 요소를 꺼낸 것이다`, `...에서 맨뒤 요소를 꺼낸 것이다`, `...에서 맨앞 요소를 꺼낸 것이다`, `...에서 맨위 요소를 꺼낸다`, `...에서 맨뒤 요소를 꺼낸다`, `...에서 맨앞 요소를 꺼낸다`, `X가 Y보다 크면/작으면`, `X가 Y와 같으면`, `X가 Y과 다르면` (과/와/이랑/랑 지원), `X를 N만큼 줄인다/늘린다`, `...에서 고른 것이다` 같은 형태다. 이들은 모두 닫힌 built-in 집합이나 제한된 위치에서만 동작한다.
-
-## 실행과 확인
-
-파일 실행:
+## 시작하기
 
 ```bash
-cargo run -- path/to/program.zm
-```
-
-샘플 실행:
-
-```bash
+# 파일 실행
 cargo run -- samples/00_hello_everyone.zm
-cargo run -- samples/04_add_function.zm
-```
 
-토큰 보기:
-
-```bash
-cargo run -- tokens path/to/program.zm
-```
-
-AST 보기:
-
-```bash
-cargo run -- ast path/to/program.zm
-```
-
-HIR 보기:
-
-```bash
-cargo run -- hir path/to/program.zm
-```
-
-REPL:
-
-```bash
+# REPL (빈 줄로 블록 실행)
 cargo run -- repl
-```
 
-블록을 포함하는 입력은 빈 줄을 한 번 더 입력하면 실행된다.
-
-테스트:
-
-```bash
+# 테스트
 cargo test
 ```
 
-## 브라우저 데모
+<details>
+<summary>디버깅 도구</summary>
 
-`web/` 아래에 브라우저용 playground가 있다.
+```bash
+cargo run -- tokens path/to/program.zm   # 토큰 보기
+cargo run -- ast path/to/program.zm      # AST 보기
+cargo run -- hir path/to/program.zm      # HIR 보기
+```
 
-- 텍스트 하노이탑: 이동 경로를 출력으로 바로 본다.
-- 캔버스 하노이탑: 지음 코드가 `그림판`을 직접 호출해서 만든 프레임을 `0.5초 쉬기`와 함께 캔버스로 재생한다.
-- 숲속의 용사: 한국어 비교, 상대적 변화, 선택 프레임을 사용한 인터랙티브 텍스트 어드벤처. Scene-restart 모델로 선택지 버튼을 클릭하면 프로그램을 처음부터 재실행한다.
+</details>
 
-로컬에서 열려면:
+## 브라우저 Playground
+
+`web/` 아래에 세 가지 데모가 있다.
+
+- **텍스트 하노이탑** — 이동 경로를 출력으로 바로 확인
+- **캔버스 하노이탑** — `그림판` 호출로 만든 프레임을 캔버스로 재생
+- **숲속의 용사** — 비교, 상대적 변화, 선택 프레임을 사용한 텍스트 어드벤처
 
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
 wasm-pack build --target web --out-dir web/pkg
 python3 -m http.server 8000 --directory web
+# → http://localhost:8000
 ```
 
-그 다음 `http://localhost:8000`을 열면 된다. 자세한 내용은 [web/README.md](./web/README.md)에 있다.
+> 자세한 내용은 [web/README.md](web/README.md).
+
+## 문서
+
+| 문서 | 설명 |
+|------|------|
+| [LANGUAGE.md](docs/LANGUAGE.md) | 언어 철학, 문법, 의미, 메시지 경계 |
+| [GRAMMAR.ebnf](docs/GRAMMAR.ebnf) | 파서 구현용 형식 문법 |
+| [IMPLEMENTATION.md](docs/IMPLEMENTATION.md) | 구현 구조, 테스트, 작업 순서 |
+| [DECISIONS.md](docs/DECISIONS.md) | 주요 설계 결정 기록 |
+| [HISTORY.md](HISTORY.md) | 버전별 변화 요약 |
+| [samples/](samples/README.md) | 바로 실행할 수 있는 샘플 프로그램 모음 |
+
+## 아키텍처
+
+```
+소스 (.zm)
+  → Lexer → Parser → Normalizer → Resolver → HIR Lowering → Interpreter
+                                                              ↓
+                                                          CLI / REPL / WASM
+```
 
 ## 다음 단계
 
-1. HIR의 `SendSelector`를 어디까지 일반화할지 결정한다.
-2. `더하기/빼기/곱하기/나누기`, `추가` 외 메시지 집합을 어디까지 열지 정한다.
-3. `docs/LANGUAGE.md`와 `docs/GRAMMAR.ebnf`를 기준으로 정규화 규칙을 더 고정한다.
-4. 인터프리터 위에 LLVM 또는 Cranelift 백엔드 초안을 올린다.
+1. HIR `SendSelector` 일반화 범위 결정
+2. 메시지 집합 확장 범위 설정
+3. 정규화 규칙 고정
+4. LLVM 또는 Cranelift 백엔드 초안
+
+---
+
+<div align="center">
+
+MIT License · [기여 가이드](AGENTS.md)
+
+</div>
