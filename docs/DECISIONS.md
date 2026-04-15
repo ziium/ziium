@@ -608,3 +608,27 @@ v0.2 이후 호출 문법 연구는 "괄호 호출을 한국어 단어로 치환
 - 다음 구현 후보는 `값은 탑에서 맨밑 요소를 꺼낸 것이다`, `탑에서 맨밑 요소를 꺼낸다`다.
 - `맨밑 요소`는 코어 위치어 집합에는 남기되, 첫 일반화 단계에서는 열지 않는다.
 - `맨위 요소`는 현재처럼 탑/스택형 수신자와 닫힌 기존 frame에서 유지한다.
+
+## 2026-04-15 - 리스트 인덱스 대입: IndexAssign variant 채택
+
+### 결정 내용
+
+`목록[인덱스]를 값으로 바꾼다` 문법을 `Stmt::IndexAssign` 별도 variant로 구현한다. 기존 `Stmt::Assign`의 target을 `AssignTarget` enum으로 일반화하는 대안을 채택하지 않는다.
+
+### 이유
+
+1. 기존 `Assign { name: String, value }` 핸들링 코드를 건드리지 않아 blast radius가 최소다.
+2. 코드베이스의 flat enum 스타일(`Bind`, `Assign`, `Print`, `Return` 등 동격 variant)과 일치한다.
+3. 향후 Property 대입이 필요하면 동일 패턴으로 variant를 추가할 수 있다.
+
+### 대안
+
+- `Assign`의 `name: String`을 `target: AssignTarget`으로 일반화 — 한 번에 모든 대입 형태를 통합하지만, 기존 코드 전면 수정 필요
+- 파서에서 `IndexAssign`을 `Assign`으로 desugar (base 변수 전체를 재대입) — 리스트의 Rc<RefCell> 참조 의미론과 충돌
+
+### 영향
+
+- 파서의 `Object` 분기에서 `Expr::Index` 후 `Direction + Change` 패턴을 인식하는 분기 추가
+- 기존 `parse_named_call_statement`를 인라인하여 IndexAssign/NamedCall을 같은 위치에서 분기
+- 중첩 인덱스(`목록[i][j]`), 레코드 필드 대입, 음수 인덱스 래핑은 명시적으로 defer
+- 상대적 변화(`만큼 줄인다/늘린다`)도 인덱스 재대입에 적용

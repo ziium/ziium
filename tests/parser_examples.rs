@@ -625,3 +625,36 @@ fn parses_standalone_call_and_precedence() {
         }
     );
 }
+
+#[test]
+fn parses_index_assignment() {
+    let program =
+        parse_source("숫자들[0]을 99로 바꾼다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::IndexAssign {
+            base: "숫자들".into(),
+            index: Expr::Int("0".into()),
+            value: Expr::Int("99".into()),
+        }]
+    );
+}
+
+#[test]
+fn parses_index_assignment_with_expression_index() {
+    let program =
+        parse_source("목록[인덱스 + 1]을 값으로 바꾼다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::IndexAssign {
+            base: "목록".into(),
+            index: Expr::Binary {
+                left: Box::new(Expr::Name("인덱스".into())),
+                op: BinaryOp::Add,
+                right: Box::new(Expr::Int("1".into())),
+                form: BinarySurface::Symbol,
+            },
+            value: Expr::Name("값".into()),
+        }]
+    );
+}

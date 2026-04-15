@@ -482,3 +482,73 @@ fn while_body_does_not_leak_bindings_to_outer_scope() {
     let err = ziium::run_source(source).expect_err("should fail");
     assert!(err.to_string().contains("정의되지 않았습니다"));
 }
+
+// --- 인덱스 대입 ---
+
+#[test]
+fn runs_index_assignment() {
+    let source = r#"숫자들은 [10, 20, 30]이다
+숫자들[1]을 99로 바꾼다
+숫자들[1]을 출력한다"#;
+    assert_output(source, &["99"]);
+}
+
+#[test]
+fn runs_index_assignment_with_expression_index() {
+    let source = r#"목록은 [1, 2, 3, 4, 5]이다
+위치는 2이다
+목록[위치 + 1]을 100으로 바꾼다
+목록[3]을 출력한다"#;
+    assert_output(source, &["100"]);
+}
+
+#[test]
+fn runs_index_assignment_swap() {
+    let source = r#"숫자들은 [5, 3]이다
+임시는 숫자들[0]이다
+숫자들[0]을 숫자들[1]로 바꾼다
+숫자들[1]을 임시로 바꾼다
+숫자들[0]을 출력한다
+숫자들[1]을 출력한다"#;
+    assert_output(source, &["3", "5"]);
+}
+
+#[test]
+fn runs_index_relative_change() {
+    let source = r#"숫자들은 [10, 20, 30]이다
+숫자들[0]을 3만큼 줄인다
+숫자들[2]를 5만큼 늘린다
+숫자들[0]을 출력한다
+숫자들[2]를 출력한다"#;
+    assert_output(source, &["7", "35"]);
+}
+
+#[test]
+fn rejects_index_assignment_out_of_bounds() {
+    let source = r#"숫자들은 [10, 20]이다
+숫자들[5]를 99로 바꾼다"#;
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("범위를 벗어났습니다"));
+}
+
+#[test]
+fn rejects_index_assignment_negative_index() {
+    let source = r#"숫자들은 [10, 20]이다
+숫자들[-1]을 99로 바꾼다"#;
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("0 이상의 정수"));
+}
+
+#[test]
+fn rejects_index_assignment_on_string() {
+    let source = r#"텍스트는 "안녕"이다
+텍스트[0]을 "가"로 바꾼다"#;
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("목록에만"));
+}
+
+#[test]
+fn rejects_index_assignment_on_undefined_variable() {
+    let err = run_source(r#"없는변수[0]을 99로 바꾼다"#).expect_err("should fail");
+    assert!(err.to_string().contains("정의되지 않았습니다"));
+}

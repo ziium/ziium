@@ -65,6 +65,12 @@ pub enum Stmt {
         args: Vec<Expr>,
         span: Option<Span>,
     },
+    IndexAssign {
+        base: String,
+        index: Expr,
+        value: Expr,
+        span: Option<Span>,
+    },
     NamedCall {
         callee: Expr,
         named_args: Expr,
@@ -195,6 +201,7 @@ impl Stmt {
         match self {
             Stmt::Bind { span, .. }
             | Stmt::Assign { span, .. }
+            | Stmt::IndexAssign { span, .. }
             | Stmt::Print { span, .. }
             | Stmt::Sleep { span, .. }
             | Stmt::Return { span, .. }
@@ -244,6 +251,16 @@ fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
             Stmt::Assign {
                 name: name.clone(),
                 target_span: cursor.next_assign_target_span(),
+                value,
+                span: cursor.next_statement_span(),
+            }
+        }
+        ast::Stmt::IndexAssign { base, index, value } => {
+            let index = lower_expr(index, cursor);
+            let value = lower_expr(value, cursor);
+            Stmt::IndexAssign {
+                base: base.clone(),
+                index,
                 value,
                 span: cursor.next_statement_span(),
             }

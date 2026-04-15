@@ -104,6 +104,13 @@ impl Resolver {
                 self.resolve_name(name, target_span.clone())?;
                 self.resolve_expr(value)
             }
+            Stmt::IndexAssign {
+                base, index, value, ..
+            } => {
+                self.resolve_name(base, None)?;
+                self.resolve_expr(index)?;
+                self.resolve_expr(value)
+            }
             Stmt::Print { value, .. }
             | Stmt::Sleep {
                 duration_seconds: value,
@@ -368,6 +375,7 @@ fn collect_unconditional_names(statements: &[Stmt]) -> HashSet<String> {
                 names.insert(name.clone());
             }
             Stmt::Assign { .. }
+            | Stmt::IndexAssign { .. }
             | Stmt::Print { .. }
             | Stmt::Sleep { .. }
             | Stmt::Send { .. }

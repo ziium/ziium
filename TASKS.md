@@ -85,3 +85,35 @@
 - **증상**: while 안에서 `중간은 ...이다` → 2회차에 "이미 정의되어 있습니다"
 - **수정**: while 본문 실행 시 `Environment::new(Some(env.clone()))` — 매 반복 자식 스코프 생성
 - **테스트**: `interpreter_examples.rs` — 2개 테스트 추가 (루프 내 바인딩 + 스코프 격리)
+
+## Plan 4: 리스트 인덱스 대입 ✅
+
+플랜: `.claude/plans/plan4-index-assignment.md`
+
+### 4-1. 파서 — IndexAssign AST 파싱 ✅
+- [x] `ast.rs`에 `IndexAssign { base, index, value }` variant 추가
+- [x] `parser.rs` Object 분기 재구성 — `finish_index_assign` + `parse_index_relative_change` + NamedCall 인라인
+- [x] `extract_index_target`: `Expr::Index { base: Name }` 추출, 비-Name 기반 에러
+- [x] 파서 테스트 2개 통과 + 기존 parser_examples 회귀 0
+
+### 4-2. 전체 파이프라인 — 기본 인덱스 대입 ✅
+- [x] `hir.rs`: `IndexAssign` variant + `lower_stmt` + `Stmt::span()` match arm
+- [x] `resolver.rs`: `IndexAssign` — `resolve_name(base)` + `resolve_expr(index, value)` + `collect_unconditional_names`
+- [x] `interpreter.rs`: `IndexAssign` — `lookup_value` → `borrow_mut()[idx] = new_val`
+- [x] 인터프리터 테스트 3개 통과 (기본, 표현식 인덱스, swap)
+
+### 4-3. 상대적 변화 ✅
+- [x] `parse_index_relative_change`: desugar `IndexAssign { value: Binary { Index, op, rhs } }`
+- [x] 테스트 통과 (`runs_index_relative_change`)
+
+### 4-4. 에러 경로 ✅
+- [x] 4개 에러 테스트 통과 (범위 초과, 음수 인덱스, 문자열 대상, 미정의 변수)
+
+### 4-5. 통합 — Bubble Sort ✅
+- [x] `explore_bubble_sort`에서 `#[ignore]` 제거 → 통과
+- [x] `cargo test` 전체 203 pass, 1 ignored, 0 fail
+
+### 4-6. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `index_assign_stmt` 규칙 추가
+- [x] `docs/LANGUAGE.md` — 인덱스 재대입 섹션 추가
+- [x] `docs/DECISIONS.md` — "리스트 인덱스 대입: IndexAssign variant 채택" 기록

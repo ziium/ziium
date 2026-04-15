@@ -6,6 +6,7 @@ program         = { newline }, { statement, { newline } }, EOF ;
 
 statement       = bind_stmt
                 | assign_stmt
+                | index_assign_stmt
                 | print_stmt
                 | sleep_stmt
                 | return_stmt
@@ -21,6 +22,9 @@ statement       = bind_stmt
 bind_stmt       = IDENT, TOPIC, ( expression, COPULA | resultive_expr ), [ PERIOD ] ;
 assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ]
                 | IDENT, OBJECT, expression, AMOUNT, CHANGE_VERB, [ PERIOD ] ;
+index_assign_stmt
+                = index_expr, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ]
+                | index_expr, OBJECT, expression, AMOUNT, CHANGE_VERB, [ PERIOD ] ;
 print_stmt      = expression, OBJECT, PRINT, [ PERIOD ] ;
 sleep_stmt      = expression, SECOND_UNIT, SLEEP, [ PERIOD ] ;
 return_stmt     = expression, OBJECT, RETURN, [ PERIOD ] ;

@@ -292,6 +292,44 @@ impl Interpreter {
                 assign_value(&env, name, value).map_err(|err| err.with_fallback_span(stmt_span))?;
                 Ok(ExecSignal::Continue)
             }
+            Stmt::IndexAssign {
+                base, index, value, ..
+            } => {
+                let base_val = lookup_value(&env, base)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                let idx = self
+                    .eval_expr(index, env.clone())
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+                let new_val = self
+                    .eval_expr(value, env)
+                    .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
+
+                let idx = match idx {
+                    Value::Int(i) if i >= 0 => i as usize,
+                    _ => {
+                        return Err(RuntimeError::new("인덱스는 0 이상의 정수여야 합니다.")
+                            .with_fallback_span(stmt_span))
+                    }
+                };
+
+                match base_val {
+                    Value::List(items) => {
+                        let mut items = items.borrow_mut();
+                        if idx >= items.len() {
+                            return Err(
+                                RuntimeError::new("목록 인덱스가 범위를 벗어났습니다.")
+                                    .with_fallback_span(stmt_span),
+                            );
+                        }
+                        items[idx] = new_val;
+                        Ok(ExecSignal::Continue)
+                    }
+                    _ => Err(
+                        RuntimeError::new("인덱스 대입은 목록에만 사용할 수 있습니다.")
+                            .with_fallback_span(stmt_span),
+                    ),
+                }
+            }
             Stmt::Print { value, .. } => {
                 let value = self
                     .eval_expr(value, env)

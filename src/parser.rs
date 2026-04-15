@@ -109,7 +109,36 @@ impl Parser {
                     self.consume_optional_period();
                     stmt
                 } else {
-                    self.parse_named_call_statement(expr)?
+                    // 인덱스 대입 또는 호출문 — Direction 이후 Change vs 호출한다로 분기
+                    // parse_expression_without_transform: Direction("로")이 transform으로
+                    // 소비되면 Change("바꾼다")에 도달 불가 (NamedCall과 동일한 제약)
+                    let rhs = self.parse_expression_without_transform(0)?;
+                    if self.match_kind(TokenKind::Amount) {
+                        self.parse_index_relative_change(expr, rhs)?
+                    } else {
+                        self.expect(
+                            TokenKind::Direction,
+                            "값 뒤에는 `로` 또는 `으로`가 와야 합니다.",
+                        )?;
+                        if self.match_kind(TokenKind::Change) {
+                            self.finish_index_assign(expr, rhs)?
+                        } else {
+                            self.expect_ident_lexeme(
+                                "호출한다",
+                                "`로`/`으로` 뒤에는 `바꾼다` 또는 `호출한다`가 와야 합니다.",
+                            )?;
+                            if !matches!(rhs, Expr::Record(_)) {
+                                return Err(self.error_here(
+                                    "이름 붙은 호출에 넘긴 값은 레코드여야 합니다.",
+                                ));
+                            }
+                            self.consume_optional_period();
+                            Stmt::NamedCall {
+                                callee: expr,
+                                named_args: rhs,
+                            }
+                        }
+                    }
                 }
             } else if matches!(expr, Expr::Call { .. } | Expr::TransformCall { .. }) {
                 let stmt = Stmt::Expr(expr);
@@ -127,21 +156,54 @@ impl Parser {
         Ok(stmt)
     }
 
-    fn parse_named_call_statement(&mut self, callee: Expr) -> Result<Stmt, ParseError> {
-        let named_args = self.parse_expression_without_transform(0)?;
-        self.expect(
-            TokenKind::Direction,
-            "넘긴 값 뒤에는 `로` 또는 `으로`가 와야 합니다.",
-        )?;
-        self.expect_ident_lexeme(
-            "호출한다",
-            "`로` 또는 `으로` 뒤에는 `호출한다`가 와야 합니다.",
-        )?;
-        if !matches!(named_args, Expr::Record(_)) {
-            return Err(self.error_here("이름 붙은 호출에 넘긴 값은 레코드여야 합니다."));
+    fn extract_index_target(&self, expr: &Expr) -> Result<(String, Expr), ParseError> {
+        match expr {
+            Expr::Index { base, index } => match base.as_ref() {
+                Expr::Name(name) => Ok((name.clone(), (**index).clone())),
+                _ => Err(self.error_here(
+                    "인덱스 재대입은 현재 `변수[인덱스]` 형태만 지원합니다.",
+                )),
+            },
+            _ => Err(self.error_here("대입 대상이 `변수[인덱스]` 형식이 아닙니다.")),
         }
+    }
+
+    fn finish_index_assign(&mut self, target: Expr, value: Expr) -> Result<Stmt, ParseError> {
+        let (base, index) = self.extract_index_target(&target)?;
         self.consume_optional_period();
-        Ok(Stmt::NamedCall { callee, named_args })
+        Ok(Stmt::IndexAssign { base, index, value })
+    }
+
+    fn parse_index_relative_change(
+        &mut self,
+        target: Expr,
+        amount: Expr,
+    ) -> Result<Stmt, ParseError> {
+        let verb = self.advance().ok_or_else(|| {
+            self.error_here("`만큼` 뒤에는 `줄인다` 또는 `늘린다`가 와야 합니다.")
+        })?;
+        let op = match verb.lexeme.as_str() {
+            "줄인다" => BinaryOp::Subtract,
+            "늘린다" => BinaryOp::Add,
+            _ => {
+                return Err(ParseError::new(
+                    "`만큼` 뒤에는 `줄인다` 또는 `늘린다`가 와야 합니다.",
+                    Some(verb.span),
+                ));
+            }
+        };
+        let (base, index) = self.extract_index_target(&target)?;
+        let value = Expr::Binary {
+            left: Box::new(Expr::Index {
+                base: Box::new(Expr::Name(base.clone())),
+                index: Box::new(index.clone()),
+            }),
+            op,
+            right: Box::new(amount),
+            form: BinarySurface::Symbol,
+        };
+        self.consume_optional_period();
+        Ok(Stmt::IndexAssign { base, index, value })
     }
 
     fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {

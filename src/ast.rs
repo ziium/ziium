@@ -50,6 +50,11 @@ pub enum Stmt {
         callee: Expr,
         named_args: Expr,
     },
+    IndexAssign {
+        base: String,
+        index: Expr,
+        value: Expr,
+    },
     Expr(Expr),
 }
 

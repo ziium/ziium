@@ -1033,7 +1033,6 @@ fn runs_iterative_power() {
 // 필요 기능: 목록 인덱스 대입 — `목록[i]를 값으로 바꾼다`
 // 현재 지음은 목록 원소의 인덱스 기반 재대입을 지원하지 않음
 #[test]
-#[ignore]
 fn explore_bubble_sort() {
     let source = indoc! {"
         숫자들은 [5, 3, 8, 1, 9, 2]이다
