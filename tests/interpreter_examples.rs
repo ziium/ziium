@@ -935,3 +935,42 @@ fn rejects_named_call_extra_key() {
     let err = run_source(source).expect_err("should fail");
     assert!(err.to_string().contains("라는 값이 없습니다"));
 }
+
+// ---------------------------------------------------------------------------
+// 빌트인 에러 경로
+// ---------------------------------------------------------------------------
+
+#[test]
+fn rejects_to_int_with_invalid_string() {
+    let source = r#"결과는 "abc"으로 정수로이다"#;
+    let err = run_source(source).expect_err("should fail");
+    assert!(err
+        .to_string()
+        .contains("문자열을 정수로 바꿀 수 없습니다"));
+}
+
+#[test]
+fn rejects_to_int_with_bool() {
+    let source = "결과는 참으로 정수로이다";
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("숫자 또는 문자열에만"));
+}
+
+#[test]
+fn rejects_to_float_with_invalid_string() {
+    let source = r#"결과는 "xyz"으로 실수로이다"#;
+    let err = run_source(source).expect_err("should fail");
+    assert!(err
+        .to_string()
+        .contains("문자열을 실수로 바꿀 수 없습니다"));
+}
+
+#[test]
+fn rejects_pop_last_on_non_list() {
+    let source = indoc! {r#"
+        숫자는 42이다
+        숫자에서 맨뒤 요소를 꺼낸다
+    "#};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("목록에만 사용할 수 있습니다"));
+}
