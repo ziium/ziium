@@ -70,3 +70,7 @@ fn sample_14_foreach() {
 fn sample_15_exist_binding() {
     run_sample("samples/15_exist_binding.zm");
 }
+#[test]
+fn sample_16_type_conversion() {
+    run_sample("samples/16_type_conversion.zm");
+}
