@@ -74,3 +74,11 @@ fn sample_15_exist_binding() {
 fn sample_16_type_conversion() {
     run_sample("samples/16_type_conversion.zm");
 }
+#[test]
+fn sample_17_mutable_vs_const() {
+    run_sample("samples/17_mutable_vs_const.zm");
+}
+#[test]
+fn sample_18_inline_if_else() {
+    run_sample("samples/18_inline_if_else.zm");
+}
