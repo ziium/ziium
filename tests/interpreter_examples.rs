@@ -898,3 +898,40 @@ fn rejects_choose_on_non_list() {
         .to_string()
         .contains("목록에만 사용할 수 있습니다"));
 }
+
+// ---------------------------------------------------------------------------
+// Named call 에러 경로
+// ---------------------------------------------------------------------------
+
+#[test]
+fn rejects_named_call_on_builtin() {
+    let source = indoc! {r#"
+        길이를 { 값: "안녕" }로 호출한다
+    "#};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err
+        .to_string()
+        .contains("이름 붙은 호출을 사용할 수 없습니다"));
+}
+
+#[test]
+fn rejects_named_call_missing_param() {
+    let source = indoc! {r#"
+        합치기 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 + 오른쪽을 돌려준다
+        합치기를 { 왼쪽: 3 }로 호출한다
+    "#};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("값이 필요합니다"));
+}
+
+#[test]
+fn rejects_named_call_extra_key() {
+    let source = indoc! {r#"
+        합치기 함수는 왼쪽, 오른쪽을 받아
+          왼쪽 + 오른쪽을 돌려준다
+        합치기를 { 왼쪽: 3, 오른쪽: 5, 중간: 4 }로 호출한다
+    "#};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("라는 값이 없습니다"));
+}
