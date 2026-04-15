@@ -293,6 +293,29 @@ fn parses_applied_bind_expression() {
 }
 
 #[test]
+fn parses_inline_if_else() {
+    let program =
+        parse_source("x > 0이면 x를 돌려주고 아니면 0을 돌려준다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::If {
+            condition: Expr::Binary {
+                left: Box::new(Expr::Name("x".into())),
+                op: BinaryOp::Greater,
+                right: Box::new(Expr::Int("0".into())),
+                form: BinarySurface::Symbol,
+            },
+            then_block: vec![Stmt::Return {
+                value: Expr::Name("x".into()),
+            }],
+            else_block: Some(vec![Stmt::Return {
+                value: Expr::Int("0".into()),
+            }]),
+        }]
+    );
+}
+
+#[test]
 fn parses_resultive_binding() {
     let program = parse_source("원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
         .expect("parse should succeed");

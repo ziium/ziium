@@ -1,3 +1,4 @@
+use indoc::indoc;
 use ziium::{FrontendError, ResolveError, RunError, RuntimeError, run_source};
 
 fn assert_output(source: &str, expected: &[&str]) {
@@ -133,6 +134,82 @@ fn runs_applied_bind_with_complex_input() {
 결과는 -7을 절대값한 것이다
 결과를 출력한다"#;
     assert_output(source, &["7"]);
+}
+
+#[test]
+fn runs_inline_if_else_return() {
+    let source = indoc! {r#"
+        큰값 함수는 가, 나를 받아
+          가 > 나이면 가를 돌려주고 아니면 나를 돌려준다
+
+        큰값(3, 7)을 출력한다
+    "#};
+    assert_output(source, &["7"]);
+}
+
+#[test]
+fn runs_inline_if_else_print() {
+    let source = indoc! {r#"
+        점수는 85이다
+        점수 >= 90이면 "우수"를 출력하고 아니면 "보통"을 출력한다
+    "#};
+    assert_output(source, &["보통"]);
+}
+
+#[test]
+fn runs_inline_if_without_else() {
+    let source = indoc! {"
+        확인 함수는 숫자를 받아
+          숫자 == 0이면 0을 돌려주고
+          숫자를 돌려준다
+
+        확인(0)을 출력한다
+        확인(5)을 출력한다
+    "};
+    assert_output(source, &["0", "5"]);
+}
+
+#[test]
+fn runs_inline_if_else_with_korean_comparison() {
+    let source = indoc! {r#"
+        가격은 5000이다
+        가격이 10000보다 크면 "비싸다"를 출력하고 아니면 "괜찮다"를 출력한다
+    "#};
+    assert_output(source, &["괜찮다"]);
+}
+
+#[test]
+fn runs_inline_if_with_manyak_prefix() {
+    let source = indoc! {r#"
+        숫자는 5이다
+        만약 숫자 > 3이면 "크다"를 출력하고 아니면 "작다"를 출력한다
+    "#};
+    assert_output(source, &["크다"]);
+}
+
+#[test]
+fn runs_inline_if_else_on_separate_lines() {
+    let source = indoc! {"
+        최대공약수 함수는 큰수, 작은수를 받아
+          만약 작은수 == 0이면 큰수를 돌려주고
+          아니면 최대공약수(작은수, 큰수 % 작은수)를 돌려준다
+
+        최대공약수(48, 18)를 출력한다
+    "};
+    assert_output(source, &["6"]);
+}
+
+#[test]
+fn runs_gcd_with_inline_if() {
+    let source = indoc! {"
+        최대공약수 함수는 큰수, 작은수를 받아
+          작은수 == 0이면 큰수를 돌려주고 아니면 최대공약수(작은수, 큰수 % 작은수)를 돌려준다
+
+        최대공약수(48, 18)를 출력한다
+        최대공약수(100, 75)를 출력한다
+        최대공약수(7, 0)을 출력한다
+    "};
+    assert_output(source, &["6", "25", "7"]);
 }
 
 #[test]

@@ -45,12 +45,14 @@ resultive_stmt  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_EFFECT, [ PERIOD
                 | expression, FROM, CHOOSE_EFFECT, [ PERIOD ] ;
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
-if_stmt         = expression, IF,
-                  newline, INDENT, block, DEDENT,
+if_stmt         = expression, IF, if_body
+                | expression, SUBJECT, expression, THAN, CMP_VERB, if_body ;
+if_body         = newline, INDENT, block, DEDENT,
                   [ ELSE, newline, INDENT, block, DEDENT ]
-                | expression, SUBJECT, expression, THAN, CMP_VERB,
-                  newline, INDENT, block, DEDENT,
-                  [ ELSE, newline, INDENT, block, DEDENT ] ;
+                | statement, [ ELSE, statement ] ;
+                (* 단문 if: `x == 0이면 y를 돌려주고 아니면 z를 돌려준다`
+                   동사 연결형 `~고`(돌려주고, 출력하고, 바꾸고)는 렉서에서
+                   종결형과 동일 토큰으로 매핑 *)
 
 while_stmt      = expression, IN, DURING,
                   newline, INDENT, block, DEDENT ;
@@ -131,9 +133,9 @@ RECEIVE         = "받아" ;
 NOTHING         = "아무것도" ;
 RECEIVE_NOT     = "받지" ;
 RECEIVE_NEG     = "않아" ;
-PRINT           = "출력한다" ;
-RETURN          = "돌려준다" ;
-CHANGE          = "바꾼다" ;
+PRINT           = "출력한다" | "출력하고" ;
+RETURN          = "돌려준다" | "돌려주고" ;
+CHANGE          = "바꾼다" | "바꾸고" ;
 TRUE            = "참" ;
 FALSE           = "거짓" ;
 NONE            = "없음" ;

@@ -75,6 +75,10 @@ impl Parser {
         } else if self.is_assign_start() {
             self.parse_assign()?
         } else {
+            // 조건문 강조 부사 — 의미 없이 소비
+            if self.at_ident_lexeme("만약") {
+                self.advance();
+            }
             let expr = self.parse_expression(0)?;
 
             if self.at_ident_lexeme("초") && self.nth_ident_lexeme(1, "쉬기") {
@@ -923,17 +927,34 @@ impl Parser {
     }
 
     fn parse_if_tail(&mut self, condition: Expr, block_msg: &str) -> Result<Stmt, ParseError> {
-        let then_block = self.parse_indented_block(block_msg)?;
-        let else_block = if self.match_kind(TokenKind::Else) {
-            Some(self.parse_indented_block("`아니면` 뒤에는 들여쓴 블록이 와야 합니다.")?)
+        if self.at(TokenKind::Newline) {
+            // 블록 if: 이면\n  문장...
+            let then_block = self.parse_indented_block(block_msg)?;
+            let else_block = if self.match_kind(TokenKind::Else) {
+                Some(self.parse_indented_block("`아니면` 뒤에는 들여쓴 블록이 와야 합니다.")?)
+            } else {
+                None
+            };
+            Ok(Stmt::If {
+                condition,
+                then_block,
+                else_block,
+            })
         } else {
-            None
-        };
-        Ok(Stmt::If {
-            condition,
-            then_block,
-            else_block,
-        })
+            // 단문 if: 이면 문장~고 아니면 문장~다
+            let then_stmt = self.parse_statement()?;
+            self.skip_newlines();
+            let else_block = if self.match_kind(TokenKind::Else) {
+                Some(vec![self.parse_statement()?])
+            } else {
+                None
+            };
+            Ok(Stmt::If {
+                condition,
+                then_block: vec![then_stmt],
+                else_block,
+            })
+        }
     }
 
     /// Look ahead to check if this is a Korean comparison pattern:

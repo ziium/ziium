@@ -657,3 +657,28 @@ v0.2 이후 호출 문법 연구는 "괄호 호출을 한국어 단어로 치환
 - `parse_applied_bind_expression` 메서드 추가 (약 25행)
 - 바인딩 RHS에서만 사용 가능, 독립 표현식이나 문장 형태 미지원
 - 향후 다른 관형형 어미(`시킨`, `만든`)는 별도 접미사 케이스로 확장 가능
+
+## 2026-04-15 - 단문 if-else: 렉서에서 `~고` 동사를 동일 토큰으로 매핑
+
+### 결정 내용
+
+`돌려주고`→Return, `출력하고`→Print, `바꾸고`→Change를 `exact_word_kind`에 추가한다. `parse_if_tail`에서 `at(Newline)`으로 블록 if와 단문 if를 분기한다. AST/HIR/리졸버/인터프리터 변경 없음.
+
+### 이유
+
+1. `~고` 어미는 동사의 의미를 변경하지 않음 — 접속 어미일 뿐. `돌려주고` = `돌려준다` + 접속
+2. 모든 문맥에서 동일 TokenKind 디스패치가 올바름 — if 밖에서 `돌려주고`는 유효한 return 문
+3. 파서에서 lexeme 검사로 `Ident("돌려주고")`를 재해석하는 대안은 `parse_statement`의 TokenKind 기반 디스패치 패턴을 위반
+4. 기존 `Stmt::If`가 단일 문장 블록을 이미 지원 (`vec![stmt]`) → 파이프라인 변경 불필요
+
+### 대안
+
+- 파서에서 `Ident` lexeme 매칭 — `parse_expression(0)` 진입 후 별도 분기 필요, 복잡도 증가
+- `~고` 전용 새 토큰 종류 — 과설계, 파서만 활용하고 나머지 파이프라인에는 무의미
+
+### 영향
+
+- `exact_word_kind`에 3개 패턴 추가 (단순 match arm 확장)
+- `parse_if_tail` ~15행 수정 (Newline 분기 + inline 경로)
+- `parse_korean_comparison`이 `parse_if_tail`을 호출하므로 자동 지원
+- `줄이고`/`늘리고`(상대적 변화 동사)는 별도 lexeme 매칭이므로 향후 확장 대상

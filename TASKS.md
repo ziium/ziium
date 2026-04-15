@@ -138,3 +138,27 @@
 - [x] `docs/GRAMMAR.ebnf` — `applied_expr` 규칙 추가
 - [x] `docs/LANGUAGE.md` — 적용 바인딩 섹션 추가
 - [x] `docs/DECISIONS.md` — "적용 바인딩: 파서 접근 채택" 기록
+
+## Plan 6: 단문 if-else (`조건이면 문장~고 아니면 문장~다`) ✅
+
+플랜: `.claude/plans/inline-if-else.md`
+
+### 6-1. 렉서 + 파서 — 단문 if-else 파싱 + 기본 실행 ✅
+- [x] RED: `tests/interpreter_examples.rs`에 `runs_inline_if_else_return` 추가
+- [x] GREEN: `src/lexer.rs` — `exact_word_kind`에 연결형 동사 3개 추가
+- [x] GREEN: `src/parser.rs` — `parse_if_tail` 수정 (Newline 분기 + inline 경로)
+- [x] 기존 테스트 207개 + 1 ignored 회귀 0 확인
+
+### 6-2. 추가 테스트 ✅
+- [x] `runs_inline_if_else_print` — 출력문 분기
+- [x] `runs_inline_if_without_else` — else 없는 guard clause
+- [x] `runs_inline_if_else_with_korean_comparison` — 한국어 비교문과 조합
+- [x] `parses_inline_if_else` — AST 구조 검증 (parser_examples)
+
+### 6-3. 통합 — GCD 함수 ✅
+- [x] `runs_gcd_with_inline_if` — 최대공약수 함수 전체 실행
+
+### 6-4. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `if_stmt` 규칙에 인라인 형식 추가
+- [x] `docs/LANGUAGE.md` — 단문 if-else 섹션 추가
+- [x] `docs/DECISIONS.md` — "단문 if-else: 렉서 접근 채택" 기록
