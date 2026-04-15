@@ -114,6 +114,28 @@ fn reports_transform_call_arity_mismatch_for_non_unary_function() {
 }
 
 #[test]
+fn runs_applied_bind_expression() {
+    let source = r#"두배 함수는 숫자를 받아
+  숫자 * 2를 돌려준다
+
+결과는 5를 두배한 것이다
+결과를 출력한다"#;
+    assert_output(source, &["10"]);
+}
+
+#[test]
+fn runs_applied_bind_with_complex_input() {
+    let source = r#"절대값 함수는 숫자를 받아
+  숫자 < 0이면
+    숫자 * -1을 돌려준다
+  숫자를 돌려준다
+
+결과는 -7을 절대값한 것이다
+결과를 출력한다"#;
+    assert_output(source, &["7"]);
+}
+
+#[test]
 fn runs_named_call_statement_example() {
     let source = r#"탑옮기기 함수는 원반수, 시작, 보조, 목표를 받아
   시작 + " -> " + 목표를 출력한다

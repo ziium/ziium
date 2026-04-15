@@ -19,7 +19,12 @@ statement       = bind_stmt
                 | call_stmt
                 ;
 
-bind_stmt       = IDENT, TOPIC, ( expression, COPULA | resultive_expr ), [ PERIOD ] ;
+bind_stmt       = IDENT, TOPIC, ( expression, COPULA
+                                | resultive_expr
+                                | applied_expr ), [ PERIOD ] ;
+applied_expr    = expression, OBJECT, IDENT_HAN, RESULT_MARKER ;
+                (* IDENT_HAN: 식별자가 `한`으로 끝남. `한` 제거 → 함수 이름.
+                   예: `5를 두배한 것이다` → TransformCall(5, "두배") *)
 assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ]
                 | IDENT, OBJECT, expression, AMOUNT, CHANGE_VERB, [ PERIOD ] ;
 index_assign_stmt

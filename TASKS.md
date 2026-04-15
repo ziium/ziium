@@ -117,3 +117,24 @@
 - [x] `docs/GRAMMAR.ebnf` — `index_assign_stmt` 규칙 추가
 - [x] `docs/LANGUAGE.md` — 인덱스 재대입 섹션 추가
 - [x] `docs/DECISIONS.md` — "리스트 인덱스 대입: IndexAssign variant 채택" 기록
+
+## Plan 5: 적용 바인딩 (`X를 Y한 것이다`) ✅
+
+플랜: `.claude/plans/parsed-hatching-coral.md`
+
+### 5-1. 파서 — applied bind 파싱 ✅
+- [x] RED: `parses_applied_bind_expression` 테스트 → 실패 확인
+- [x] GREEN: `parse_bind`에 `Object` 분기 + `parse_applied_bind_expression` 구현
+- [x] 기존 테스트 회귀 0 확인
+
+### 5-2. 인터프리터 — 기본 실행 ✅
+- [x] `runs_applied_bind_expression` — `5를 두배한 것이다` → 10
+- [x] `runs_applied_bind_with_complex_input` — `-7을 절대값한 것이다` → 7
+
+### 5-3. 에러 경로 ✅
+- [x] `rejects_applied_bind_without_han_suffix` — `한` 없는 함수 이름 → 에러
+
+### 5-4. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `applied_expr` 규칙 추가
+- [x] `docs/LANGUAGE.md` — 적용 바인딩 섹션 추가
+- [x] `docs/DECISIONS.md` — "적용 바인딩: 파서 접근 채택" 기록

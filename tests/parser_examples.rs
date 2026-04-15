@@ -272,6 +272,27 @@ fn rejects_transform_call_without_identifier_callee() {
 }
 
 #[test]
+fn rejects_applied_bind_without_han_suffix() {
+    let err = parse_source("결과는 5를 두배 것이다").expect_err("parse should fail");
+    assert!(err.to_string().contains("한"));
+}
+
+#[test]
+fn parses_applied_bind_expression() {
+    let program = parse_source("결과는 5를 두배한 것이다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "결과".into(),
+            value: Expr::TransformCall {
+                input: Box::new(Expr::Int("5".into())),
+                callee: "두배".into(),
+            },
+        }]
+    );
+}
+
+#[test]
 fn parses_resultive_binding() {
     let program = parse_source("원반은 시작탑의 원반들에서 맨위 요소를 꺼낸 것이다.")
         .expect("parse should succeed");

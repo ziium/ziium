@@ -279,6 +279,8 @@ impl Parser {
         let receiver = self.parse_expression(0)?;
         let value = if self.match_kind(TokenKind::From) {
             self.parse_resultive_expression(receiver)?
+        } else if self.match_kind(TokenKind::Object) {
+            self.parse_applied_bind_expression(receiver)?
         } else {
             if self.at(TokenKind::Direction) {
                 return Err(self.error_here("`로` 또는 `으로` 뒤에는 함수 이름이 필요합니다."));
@@ -325,6 +327,40 @@ impl Parser {
         };
         self.metadata.expr_spans.push(result_marker.span);
         Ok(expr)
+    }
+
+    /// `X를 Y한 것이다` → TransformCall { input: X, callee: "Y" }
+    fn parse_applied_bind_expression(&mut self, input: Expr) -> Result<Expr, ParseError> {
+        let callee_token = self.expect_ident_token(
+            "`를` 뒤에는 함수 이름이 필요합니다. (예: `5를 두배한 것이다`)",
+        )?;
+        let callee = match callee_token.lexeme.strip_suffix('한') {
+            Some(base) if !base.is_empty() => base.to_string(),
+            Some(_) => {
+                return Err(ParseError::new(
+                    "함수 이름이 비어있습니다.",
+                    Some(callee_token.span),
+                ))
+            }
+            None => {
+                return Err(ParseError::new(
+                    "함수 이름은 `한`으로 끝나야 합니다. (예: `두배한 것이다`)",
+                    Some(callee_token.span),
+                ))
+            }
+        };
+        self.metadata
+            .name_expr_spans
+            .push(callee_token.span.clone());
+        let result_marker = self.expect(
+            TokenKind::ResultMarker,
+            "`한` 뒤에는 `것이다`가 와야 합니다.",
+        )?;
+        self.metadata.expr_spans.push(result_marker.span);
+        Ok(Expr::TransformCall {
+            input: Box::new(input),
+            callee,
+        })
     }
 
     fn parse_resultive_statement(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
