@@ -61,6 +61,25 @@ fn run_cli() -> Result<(), String> {
     let first = args.next();
     let stdin_is_terminal = io::stdin().is_terminal();
 
+    match first.as_deref() {
+        Some("--version" | "-v") => {
+            println!("ziium {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
+        Some("--help" | "-h") => {
+            println!("사용법: ziium [명령] [파일경로]");
+            println!();
+            println!("명령:");
+            println!("  run     프로그램을 실행합니다 (기본값)");
+            println!("  tokens  토큰 목록을 출력합니다");
+            println!("  ast     구문 트리를 출력합니다");
+            println!("  hir     HIR을 출력합니다");
+            println!("  repl    대화형 모드를 시작합니다");
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let (mode, path) = match first.as_deref() {
         None if stdin_is_terminal => ("repl", None),
         None => ("run", None),

@@ -174,3 +174,30 @@ fn cli_prints_ast() {
 
     let _ = fs::remove_file(path);
 }
+
+#[test]
+fn cli_prints_version() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .arg("--version")
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("ziium"));
+    assert!(stdout.contains(env!("CARGO_PKG_VERSION")));
+}
+
+#[test]
+fn cli_prints_help() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .arg("--help")
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("사용법"));
+    assert!(stdout.contains("run"));
+    assert!(stdout.contains("repl"));
+}
