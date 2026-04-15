@@ -101,7 +101,34 @@ impl Parser {
                     body,
                 }
             } else if self.match_kind(TokenKind::Locative) {
-                self.parse_keyword_message(expr)?
+                let name_spans_end = self.metadata.expr_spans.len();
+                let arg_or_value = self.parse_expression_without_transform(0)?;
+                if self.match_kind(TokenKind::Object) {
+                    // 가변 바인딩: `횟수에 0을 넣는다`
+                    self.expect(
+                        TokenKind::Store,
+                        "`를`/`을` 뒤에는 `넣는다`가 와야 합니다.",
+                    )?;
+                    let name = match expr {
+                        Expr::Name(name) => name,
+                        _ => {
+                            return Err(
+                                self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")
+                            )
+                        }
+                    };
+                    // Name expr pushed 1 span to expr_spans; transfer to declaration_spans
+                    let name_span = self.metadata.expr_spans.remove(name_spans_end - 1);
+                    self.metadata.declaration_spans.push(name_span);
+                    self.consume_optional_period();
+                    Stmt::Bind {
+                        name,
+                        value: arg_or_value,
+                        mutable: true,
+                    }
+                } else {
+                    self.finish_keyword_message(expr, arg_or_value)?
+                }
             } else if self.match_kind(TokenKind::Object) {
                 if self.match_kind(TokenKind::Print) {
                     let stmt = Stmt::Print { value: expr };
@@ -210,8 +237,7 @@ impl Parser {
         Ok(Stmt::IndexAssign { base, index, value })
     }
 
-    fn parse_keyword_message(&mut self, receiver: Expr) -> Result<Stmt, ParseError> {
-        let arg = self.parse_expression_without_transform(0)?;
+    fn finish_keyword_message(&mut self, receiver: Expr, arg: Expr) -> Result<Stmt, ParseError> {
         let has_direction = self.match_kind(TokenKind::Direction);
         let selector = self.expect_ident_token("`에` 뒤 키워드 메시지 이름이 필요합니다.")?;
         let keyword = keyword_message_for_selector(&selector.lexeme).ok_or_else(|| {
@@ -293,7 +319,7 @@ impl Parser {
             receiver
         };
         self.consume_optional_period();
-        Ok(Stmt::Bind { name, value })
+        Ok(Stmt::Bind { name, value, mutable: false })
     }
 
     fn parse_resultive_expression(&mut self, receiver: Expr) -> Result<Expr, ParseError> {

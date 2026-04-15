@@ -9,6 +9,7 @@ fn parses_string_binding() {
             statements: vec![Stmt::Bind {
                 name: "이름".into(),
                 value: Expr::String("철수".into()),
+                mutable: false,
             }],
         }
     );
@@ -86,6 +87,7 @@ fn parses_binary_word_message_in_binding() {
                 right: Box::new(Expr::Int("8".into())),
                 form: BinarySurface::Word,
             },
+            mutable: false,
         }]
     );
 }
@@ -258,6 +260,7 @@ fn parses_transform_call_in_binding() {
                 input: Box::new(Expr::String("지음".into())),
                 callee: "인사만들기".into(),
             },
+            mutable: false,
         }]
     );
 }
@@ -288,6 +291,7 @@ fn parses_applied_bind_expression() {
                 input: Box::new(Expr::Int("5".into())),
                 callee: "두배".into(),
             },
+            mutable: false,
         }]
     );
 }
@@ -332,6 +336,7 @@ fn parses_resultive_binding() {
                 role: "맨위 요소".into(),
                 verb: "꺼낸".into(),
             },
+            mutable: false,
         }]
     );
 }
@@ -350,6 +355,7 @@ fn parses_back_resultive_binding() {
                 role: "맨뒤 요소".into(),
                 verb: "꺼낸".into(),
             },
+            mutable: false,
         }]
     );
 }
@@ -368,6 +374,7 @@ fn parses_front_resultive_binding() {
                 role: "맨앞 요소".into(),
                 verb: "꺼낸".into(),
             },
+            mutable: false,
         }]
     );
 }
@@ -469,6 +476,7 @@ fn parses_builtin_like_property_names_as_plain_properties() {
                     base: Box::new(Expr::Name("상자".into())),
                     name: "길이".into(),
                 },
+                mutable: false,
             },
             Stmt::Bind {
                 name: "제곱값".into(),
@@ -476,6 +484,7 @@ fn parses_builtin_like_property_names_as_plain_properties() {
                     base: Box::new(Expr::Name("숫자".into())),
                     name: "제곱".into(),
                 },
+                mutable: false,
             },
         ]
     );
@@ -500,6 +509,7 @@ fn parses_list_and_record_literals() {
                     value: Expr::List(vec![Expr::Int("80".into()), Expr::Int("443".into())]),
                 },
             ]),
+            mutable: false,
         }]
     );
 }
@@ -522,6 +532,7 @@ fn parses_record_literal_with_shorthand_entries() {
                     value: Expr::Int("18".into()),
                 },
             ]),
+            mutable: false,
         }]
     );
 }
@@ -555,6 +566,7 @@ fn parses_function_definition_and_call_binding() {
                     callee: Box::new(Expr::Name("더하기".into())),
                     args: vec![Expr::Int("3".into()), Expr::Int("5".into())],
                 },
+                mutable: false,
             },
         ]
     );
@@ -666,7 +678,21 @@ fn parses_standalone_call_and_precedence() {
                 right: Box::new(Expr::Bool(true)),
                 form: BinarySurface::Symbol,
             },
+            mutable: false,
         }
+    );
+}
+
+#[test]
+fn parses_mutable_bind() {
+    let program = parse_source("횟수에 0을 넣는다").expect("parse should succeed");
+    assert_eq!(
+        program.statements,
+        vec![Stmt::Bind {
+            name: "횟수".into(),
+            value: Expr::Int("0".into()),
+            mutable: true,
+        }]
     );
 }
 

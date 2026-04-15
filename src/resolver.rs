@@ -2,7 +2,7 @@ use crate::ast;
 use crate::error::ResolveError;
 use crate::hir::{self, Expr, Program, RecordEntry, SendSelector, Stmt};
 use crate::token::Span;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 pub struct ResolverSession {
@@ -11,7 +11,8 @@ pub struct ResolverSession {
 
 #[derive(Debug, Clone)]
 struct Scope {
-    defined_now: HashSet<String>,
+    /// Maps name → mutable flag for names already declared in this scope.
+    defined_now: HashMap<String, bool>,
     defined_eventually: HashSet<String>,
 }
 
@@ -35,7 +36,7 @@ impl ResolverSession {
         let builtins = builtin_names();
         Self {
             globals: Scope {
-                defined_now: builtins.clone(),
+                defined_now: builtins.iter().map(|n| (n.clone(), false)).collect(),
                 defined_eventually: builtins,
             },
         }
@@ -62,7 +63,7 @@ impl ResolverSession {
             .into_iter()
             .next()
             .map(|mut scope| {
-                scope.defined_eventually = scope.defined_now.clone();
+                scope.defined_eventually = scope.defined_now.keys().cloned().collect();
                 scope
             })
             .expect("resolver should keep global scope");
@@ -90,10 +91,11 @@ impl Resolver {
                 name,
                 name_span,
                 value,
+                mutable,
                 ..
             } => {
                 self.resolve_expr(value)?;
-                self.declare(name, name_span.clone())
+                self.declare(name, name_span.clone(), *mutable)
             }
             Stmt::Assign {
                 name,
@@ -102,6 +104,7 @@ impl Resolver {
                 ..
             } => {
                 self.resolve_name(name, target_span.clone())?;
+                self.check_mutable(name, target_span.clone())?;
                 self.resolve_expr(value)
             }
             Stmt::IndexAssign {
@@ -163,7 +166,7 @@ impl Resolver {
                 body,
                 ..
             } => {
-                self.declare(name, name_span.clone())?;
+                self.declare(name, name_span.clone(), false)?;
                 self.resolve_function(params, param_spans, body)
             }
         }
@@ -295,13 +298,13 @@ impl Resolver {
         self.function_depth += 1;
         let eventual_names = collect_unconditional_names(body);
         self.scopes.push(Scope {
-            defined_now: HashSet::new(),
+            defined_now: HashMap::new(),
             defined_eventually: eventual_names,
         });
 
         let result = (|| {
             for (param, span) in params.iter().zip(param_spans.iter()) {
-                self.declare(param, span.clone())?;
+                self.declare(param, span.clone(), true)?;
             }
             self.resolve_statements(body)
         })();
@@ -311,20 +314,20 @@ impl Resolver {
         result
     }
 
-    fn declare(&mut self, name: &str, span: Option<Span>) -> Result<(), ResolveError> {
+    fn declare(&mut self, name: &str, span: Option<Span>, mutable: bool) -> Result<(), ResolveError> {
         let current_scope = self
             .scopes
             .last_mut()
             .expect("resolver should have a current scope");
 
-        if current_scope.defined_now.contains(name) {
+        if current_scope.defined_now.contains_key(name) {
             return Err(ResolveError::with_span(
                 format!("`{}`은(는) 현재 스코프에 이미 정의되어 있습니다.", name),
                 span,
             ));
         }
 
-        current_scope.defined_now.insert(name.to_string());
+        current_scope.defined_now.insert(name.to_string(), mutable);
         current_scope.defined_eventually.insert(name.to_string());
         Ok(())
     }
@@ -333,13 +336,13 @@ impl Resolver {
         let mut scopes = self.scopes.iter().rev();
         if scopes
             .next()
-            .is_some_and(|scope| scope.defined_now.contains(name))
+            .is_some_and(|scope| scope.defined_now.contains_key(name))
         {
             return Ok(());
         }
 
         if scopes.any(|scope| {
-            scope.defined_now.contains(name) || scope.defined_eventually.contains(name)
+            scope.defined_now.contains_key(name) || scope.defined_eventually.contains(name)
         }) {
             return Ok(());
         }
@@ -348,6 +351,24 @@ impl Resolver {
             format!("`{}`은(는) 아직 정의되지 않았습니다.", name),
             span,
         ))
+    }
+
+    fn check_mutable(&self, name: &str, span: Option<Span>) -> Result<(), ResolveError> {
+        for scope in self.scopes.iter().rev() {
+            if let Some(&mutable) = scope.defined_now.get(name) {
+                if !mutable {
+                    return Err(ResolveError::with_span(
+                        format!(
+                            "`{}`은(는) 변경할 수 없습니다. 변경하려면 `{}에 값을 넣는다`로 선언하세요.",
+                            name, name
+                        ),
+                        span,
+                    ));
+                }
+                return Ok(());
+            }
+        }
+        Ok(())
     }
 }
 
@@ -394,17 +415,17 @@ fn merge_if_scope(before: &Scope, then_scope: &Scope, else_scope: Option<&Scope>
     let mut defined_now = before.defined_now.clone();
 
     if let Some(else_scope) = else_scope {
-        for name in then_scope
-            .defined_now
-            .intersection(&else_scope.defined_now)
-            .filter(|name| !before.defined_now.contains(*name))
-        {
-            defined_now.insert(name.clone());
+        for (name, &mutable) in &then_scope.defined_now {
+            if !before.defined_now.contains_key(name)
+                && else_scope.defined_now.contains_key(name)
+            {
+                defined_now.insert(name.clone(), mutable);
+            }
         }
     }
 
     Scope {
-        defined_eventually: defined_now.clone(),
+        defined_eventually: defined_now.keys().cloned().collect(),
         defined_now,
     }
 }

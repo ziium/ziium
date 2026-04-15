@@ -682,3 +682,41 @@ v0.2 이후 호출 문법 연구는 "괄호 호출을 한국어 단어로 치환
 - `parse_if_tail` ~15행 수정 (Newline 분기 + inline 경로)
 - `parse_korean_comparison`이 `parse_if_tail`을 호출하므로 자동 지원
 - `줄이고`/`늘리고`(상대적 변화 동사)는 별도 lexeme 매칭이므로 향후 확장 대상
+
+---
+
+## 2026-04-15: 가변/불변 바인딩 — `넣는다`(let) / `이다`(const)
+
+### 결정
+
+`이다` 바인딩은 불변(const), `넣는다` 바인딩은 가변(let)으로 구분한다. 리졸버에서 불변 바인딩 재대입 시 에러를 발생시킨다.
+
+### 이유
+
+1. `이다`는 한국어 copula(서술격 조사)로 "X는 Y이다"는 존재론적 선언에 가까움 — 재대입에 어색
+2. `횟수에 0을 넣는다`는 절차적 초기화에 자연스러운 한국어 어순
+3. const/let 구분은 프로그래머의 의도를 명확히 전달하고 실수를 방지
+
+### 설계 세부사항
+
+- `이다` = const: 바인딩 불변, 내용 가변 (JavaScript `const` 의미론). IndexAssign/KeywordMessage 허용.
+- `넣는다` = let: 바인딩 가변 (`바꾼다`로 재대입 가능).
+- `넣고` 연결형: 단문 if에서 `만약 x > 0이면 결과에 x를 넣고 아니면 결과에 0을 넣는다` 허용.
+- 함수 매개변수: 가변 (재대입 가능).
+- while 스코프 안의 `이다`: 매 반복 새 자식 스코프 → const OK.
+- Locative 충돌 해결: `에` 뒤 식 파싱 후 Object 토큰 유무로 가변 바인딩 vs 키워드 메시지 구분.
+
+### 대안
+
+- 컨벤션만 (강제 없음) — 도구 지원 약하고 실수 방지 불가
+- 새 AST variant `MutableBind` — 기존 `Bind`에 `mutable: bool` 플래그로 충분, 별도 variant은 과설계
+
+### 영향
+
+- `src/token.rs`: `Store` variant 추가
+- `src/lexer.rs`: `넣는다`/`넣고` → Store 매핑 + `에`를 단음절 분리 화이트리스트에 추가
+- `src/ast.rs`, `src/hir.rs`: `Bind { mutable: bool }` 추가
+- `src/parser.rs`: Locative 분기 리팩터 — `finish_keyword_message` 분리, 가변 바인딩 경로 추가
+- `src/resolver.rs`: `defined_now: HashMap<String, bool>` + `check_mutable` + `FunctionDef`/params 가변 등록
+- `src/interpreter.rs`: `Environment.immutable: HashSet<String>` + `assign_value` 불변 체크
+- 테스트 20+ 개 `이다` → `넣는다` 마이그레이션

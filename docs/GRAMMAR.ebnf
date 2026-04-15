@@ -5,6 +5,7 @@
 program         = { newline }, { statement, { newline } }, EOF ;
 
 statement       = bind_stmt
+                | mutable_bind_stmt
                 | assign_stmt
                 | index_assign_stmt
                 | print_stmt
@@ -25,6 +26,10 @@ bind_stmt       = IDENT, TOPIC, ( expression, COPULA
 applied_expr    = expression, OBJECT, IDENT_HAN, RESULT_MARKER ;
                 (* IDENT_HAN: 식별자가 `한`으로 끝남. `한` 제거 → 함수 이름.
                    예: `5를 두배한 것이다` → TransformCall(5, "두배") *)
+mutable_bind_stmt
+                = IDENT, LOCATIVE, expression, OBJECT, STORE, [ PERIOD ] ;
+                (* 가변 바인딩: `횟수에 0을 넣는다` → Bind(mutable=true)
+                   재대입(`바꾼다`) 허용. `이다`로 선언한 이름은 재대입 불가. *)
 assign_stmt     = IDENT, OBJECT, expression, DIRECTION, CHANGE, [ PERIOD ]
                 | IDENT, OBJECT, expression, AMOUNT, CHANGE_VERB, [ PERIOD ] ;
 index_assign_stmt
@@ -164,6 +169,7 @@ THAN            = "보다" ;
 CMP_VERB        = IDENT("크면") | IDENT("작으면") | IDENT("같으면") | IDENT("다르면") ;
 AMOUNT          = "만큼" ;
 CHANGE_VERB     = IDENT("줄인다") | IDENT("늘린다") ;
+STORE           = "넣는다" | "넣고" ;
 CHOOSE_RESULT   = IDENT("고른"), RESULT_MARKER ;
 CHOOSE_EFFECT   = IDENT("고른다") ;
 

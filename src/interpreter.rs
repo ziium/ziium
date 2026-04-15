@@ -9,7 +9,7 @@ use crate::resolver::ResolverSession;
 use crate::token::Span;
 use serde::Serialize;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
 
@@ -138,6 +138,7 @@ impl std::fmt::Debug for Interpreter {
 #[derive(Debug)]
 struct Environment {
     values: BTreeMap<String, Value>,
+    immutable: HashSet<String>,
     parent: Option<EnvRef>,
 }
 
@@ -272,7 +273,12 @@ impl Interpreter {
     fn execute_stmt(&mut self, stmt: &Stmt, env: EnvRef) -> Result<ExecSignal, RuntimeError> {
         let stmt_span = stmt.span().cloned();
         match stmt {
-            Stmt::Bind { name, value, .. } => {
+            Stmt::Bind {
+                name,
+                value,
+                mutable,
+                ..
+            } => {
                 if env.borrow().values.contains_key(name) {
                     return Err(RuntimeError::with_span(
                         format!("`{}`은(는) 현재 스코프에 이미 정의되어 있습니다.", name),
@@ -282,7 +288,11 @@ impl Interpreter {
                 let value = self
                     .eval_expr(value, env.clone())
                     .map_err(|err| err.with_fallback_span(stmt_span.clone()))?;
-                env.borrow_mut().values.insert(name.clone(), value);
+                let mut env_ref = env.borrow_mut();
+                env_ref.values.insert(name.clone(), value);
+                if !mutable {
+                    env_ref.immutable.insert(name.clone());
+                }
                 Ok(ExecSignal::Continue)
             }
             Stmt::Assign { name, value, .. } => {
@@ -1141,6 +1151,7 @@ impl Environment {
     fn new(parent: Option<EnvRef>) -> EnvRef {
         Rc::new(RefCell::new(Self {
             values: BTreeMap::new(),
+            immutable: HashSet::new(),
             parent,
         }))
     }
@@ -1264,6 +1275,12 @@ fn assign_value(env: &EnvRef, name: &str, value: Value) -> Result<(), RuntimeErr
         let parent = {
             let mut scope_ref = scope.borrow_mut();
             if scope_ref.values.contains_key(name) {
+                if scope_ref.immutable.contains(name) {
+                    return Err(RuntimeError::new(format!(
+                        "`{}`은(는) 변경할 수 없습니다. 변경하려면 `{}에 값을 넣는다`로 선언하세요.",
+                        name, name
+                    )));
+                }
                 scope_ref.values.insert(name.to_string(), value);
                 return Ok(());
             }

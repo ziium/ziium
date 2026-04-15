@@ -19,6 +19,7 @@ pub enum Stmt {
         name: String,
         name_span: Option<Span>,
         value: Expr,
+        mutable: bool,
         span: Option<Span>,
     },
     Assign {
@@ -237,12 +238,13 @@ impl Expr {
 
 fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
     match stmt {
-        ast::Stmt::Bind { name, value } => {
+        ast::Stmt::Bind { name, value, mutable } => {
             let value = lower_expr(value, cursor);
             Stmt::Bind {
                 name: name.clone(),
                 name_span: cursor.next_declaration_span(),
                 value,
+                mutable: *mutable,
                 span: cursor.next_statement_span(),
             }
         }

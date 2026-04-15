@@ -162,3 +162,50 @@
 - [x] `docs/GRAMMAR.ebnf` — `if_stmt` 규칙에 인라인 형식 추가
 - [x] `docs/LANGUAGE.md` — 단문 if-else 섹션 추가
 - [x] `docs/DECISIONS.md` — "단문 if-else: 렉서 접근 채택" 기록
+
+## Plan 7: 가변 바인딩 (`넣는다` = let, `이다` = const) ✅
+
+플랜: `.claude/plans/mutable-bind.md`
+
+### Phase A: `넣는다` 파이프라인 관통 (비파괴적) ✅
+
+#### 7-1. Token + Lexer + AST + HIR — 기반 구조 ✅
+- [x] `src/token.rs`: `Store` variant 추가
+- [x] `src/lexer.rs`: `넣는다`/`넣고` → Store 매핑 + `에` 단음절 분리 화이트리스트 추가
+- [x] `src/ast.rs`: `Bind { mutable: bool }` — 기존 match arm에 `..` 추가
+- [x] `src/hir.rs`: `Bind { mutable: bool }` + `lower_stmt`에서 mutable 전달
+- [x] 컴파일 확인 (기존 테스트 전체 통과)
+
+#### 7-2. Parser — `넣는다` 바인딩 파싱 ✅
+- [x] RED: `tests/interpreter_examples.rs`에 `runs_mutable_bind_basic` 추가
+- [x] GREEN: `src/parser.rs` — Locative 분기에서 Object 유무로 mutable bind vs keyword message 구분
+- [x] `parse_keyword_message` → `finish_keyword_message` 리팩터 (arg 사전 파싱)
+- [x] 기존 테스트 전체 통과 + 새 테스트 통과
+
+#### 7-3. 추가 테스트 — `넣는다` 동작 확인 ✅
+- [x] `runs_mutable_bind_with_expression` — `오른쪽에 목록의 길이 - 1을 넣는다`
+- [x] `runs_mutable_bind_with_inline_if` — `만약 x > 0이면 결과에 x를 넣고 아니면 결과에 0을 넣는다`
+- [x] `parses_mutable_bind` — AST 구조 검증: `Bind { mutable: true }`
+
+### Phase B: 불변성 강제 + 마이그레이션 ✅
+
+#### 7-4. Resolver — 불변 바인딩 재대입 에러 ✅
+- [x] RED: `tests/resolver_examples.rs`에 `rejects_reassign_to_const_binding` 추가
+- [x] GREEN: `src/resolver.rs` — `defined_now`를 `HashMap<String, bool>`로 변경, Assign 시 `check_mutable`
+- [x] 함수 매개변수는 mutable로 등록, FunctionDef는 immutable
+- [x] `allows_reassign_to_mutable_binding`, `allows_reassign_to_function_param` 추가
+
+#### 7-5. Interpreter — 불변 체크 + 에러 ✅
+- [x] `src/interpreter.rs` — Environment에 `immutable: HashSet<String>` 추가
+- [x] `Stmt::Bind` 핸들러에서 `mutable: false` → immutable set에 등록
+- [x] `assign_value`에서 immutable 체크 (리졸버와 이중 방어)
+
+#### 7-6. 테스트 마이그레이션 ✅
+- [x] `tests/rosetta_examples.rs` — 재대입되는 `이다` 바인딩 20+ 개를 `넣는다`로 변경
+- [x] `tests/interpreter_examples.rs` — 재대입되는 `이다` 바인딩 5개를 `넣는다`로 변경
+- [x] 전체 222 테스트 통과, 1 ignored, 회귀 0
+
+#### 7-7. 문서 갱신 ✅
+- [x] `docs/GRAMMAR.ebnf` — `mutable_bind_stmt` 규칙 + `STORE` 토큰 정의
+- [x] `docs/LANGUAGE.md` — 불변 바인딩 / 가변 바인딩 / 재대입 섹션 분리
+- [x] `docs/DECISIONS.md` — "가변/불변 바인딩: 넣는다=let, 이다=const 채택" 기록

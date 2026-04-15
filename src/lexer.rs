@@ -497,6 +497,7 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
         "출력한다" | "출력하고" => Some(TokenKind::Print),
         "돌려준다" | "돌려주고" => Some(TokenKind::Return),
         "바꾼다" | "바꾸고" => Some(TokenKind::Change),
+        "넣는다" | "넣고" => Some(TokenKind::Store),
         "참" => Some(TokenKind::True),
         "거짓" => Some(TokenKind::False),
         "없음" => Some(TokenKind::None),
@@ -569,7 +570,7 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 fn should_split_word(base: &str, suffix: &str) -> bool {
     // "이다"/"이면"은 키워드 접미사이므로 base 길이와 무관하게 항상 분리한다.
     // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.
-    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼" | "이면" | "이다") {
+    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼" | "에" | "이면" | "이다") {
         return true;
     }
 

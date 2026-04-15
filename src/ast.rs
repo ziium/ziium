@@ -8,6 +8,7 @@ pub enum Stmt {
     Bind {
         name: String,
         value: Expr,
+        mutable: bool,
     },
     Assign {
         name: String,

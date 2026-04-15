@@ -1,3 +1,4 @@
+use indoc::indoc;
 use ziium::{FrontendError, ResolveError, RunError, run_source};
 
 #[test]
@@ -136,4 +137,43 @@ fn allows_nested_function_to_capture_late_bound_outer_name() {
     )
     .expect("program should run");
     assert_eq!(result.output, vec!["하하".to_string()]);
+}
+
+#[test]
+fn rejects_reassign_to_const_binding() {
+    let source = indoc! {r#"
+        이름은 "영희"이다
+        이름을 "철수"로 바꾼다
+    "#};
+    let err = run_source(source).expect_err("should fail");
+    assert!(matches!(
+        err,
+        RunError::Frontend(FrontendError::Resolve(ResolveError { .. }))
+    ));
+    let message = err.to_string();
+    assert!(message.contains("변경할 수 없습니다"));
+}
+
+#[test]
+fn allows_reassign_to_mutable_binding() {
+    let source = indoc! {"
+        횟수에 0을 넣는다
+        횟수를 1로 바꾼다
+        횟수를 출력한다
+    "};
+    let result = run_source(source).expect("should succeed");
+    assert_eq!(result.output, vec!["1".to_string()]);
+}
+
+#[test]
+fn allows_reassign_to_function_param() {
+    let source = indoc! {"
+        증가 함수는 숫자를 받아
+          숫자를 숫자 + 1로 바꾼다
+          숫자를 돌려준다
+
+        증가(5)를 출력한다
+    "};
+    let result = run_source(source).expect("should succeed");
+    assert_eq!(result.output, vec!["6".to_string()]);
 }

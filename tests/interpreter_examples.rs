@@ -21,7 +21,7 @@ fn runs_basic_binding_and_print() {
 
 #[test]
 fn runs_assignment_and_print() {
-    let source = r#"점수는 10이다
+    let source = r#"점수에 10을 넣는다
 점수를 점수 + 5로 바꾼다
 점수를 출력한다"#;
     assert_output(source, &["15"]);
@@ -60,7 +60,7 @@ fn runs_if_else_example() {
 #[test]
 fn runs_while_loop_example() {
     let source = r#"숫자들은 [3, 5, 8]이다
-인덱스는 0이다
+인덱스에 0을 넣는다
 인덱스 < 숫자들의 길이인 동안
   숫자들[인덱스]을 출력한다
   인덱스를 인덱스 + 1로 바꾼다"#;
@@ -547,7 +547,7 @@ fn allows_compound_identifier_ending_in_in() {
 fn splits_in_before_during_for_while_loop() {
     // "길이인 동안" → "길이"+"인"+"동안"으로 정상 분리
     let source = r#"숫자들은 [3, 5, 8]이다
-인덱스는 0이다
+인덱스에 0을 넣는다
 인덱스 < 숫자들의 길이인 동안
   숫자들[인덱스]을 출력한다
   인덱스를 인덱스 + 1로 바꾼다"#;
@@ -562,7 +562,7 @@ fn splits_in_before_during_for_while_loop() {
 fn allows_binding_inside_while_loop() {
     // 매 반복마다 새 변수를 바인딩할 수 있어야 함
     let source = r#"목록은 [10, 20, 30]이다
-인덱스는 0이다
+인덱스에 0을 넣는다
 인덱스 < 목록의 길이인 동안
   값은 목록[인덱스]이다
   값을 출력한다
@@ -573,7 +573,7 @@ fn allows_binding_inside_while_loop() {
 #[test]
 fn while_body_does_not_leak_bindings_to_outer_scope() {
     // while 본문에서 정의한 변수가 외부로 누출되면 안 됨
-    let source = r#"횟수는 0이다
+    let source = r#"횟수에 0을 넣는다
 횟수 < 1인 동안
   임시는 "안녕"이다
   횟수를 횟수 + 1로 바꾼다
@@ -650,4 +650,56 @@ fn rejects_index_assignment_on_string() {
 fn rejects_index_assignment_on_undefined_variable() {
     let err = run_source(r#"없는변수[0]을 99로 바꾼다"#).expect_err("should fail");
     assert!(err.to_string().contains("정의되지 않았습니다"));
+}
+
+#[test]
+fn runs_mutable_bind_basic() {
+    let source = indoc! {"
+        횟수에 0을 넣는다
+        횟수를 횟수 + 1로 바꾼다
+        횟수를 출력한다
+    "};
+    assert_output(source, &["1"]);
+}
+
+#[test]
+fn runs_mutable_bind_with_expression() {
+    let source = indoc! {"
+        목록은 [10, 20, 30]이다
+        오른쪽에 목록의 길이 - 1을 넣는다
+        오른쪽을 출력한다
+    "};
+    assert_output(source, &["2"]);
+}
+
+#[test]
+fn runs_mutable_bind_with_inline_if() {
+    let source = indoc! {"
+        x는 5이다
+        만약 x > 0이면 결과에 x를 넣고 아니면 결과에 0을 넣는다
+        결과를 출력한다
+    "};
+    assert_output(source, &["5"]);
+}
+
+#[test]
+fn allows_index_assign_on_const_binding() {
+    // D2: const는 바인딩 불변, 내용 가변 (JS const 의미론)
+    let source = indoc! {"
+        목록은 [1, 2, 3]이다
+        목록[0]을 99로 바꾼다
+        목록[0]을 출력한다
+    "};
+    assert_output(source, &["99"]);
+}
+
+#[test]
+fn rejects_reassign_on_const_binding() {
+    // D2: const 바인딩 자체를 교체하면 에러
+    let source = indoc! {"
+        목록은 [1, 2, 3]이다
+        목록을 [4, 5, 6]으로 바꾼다
+    "};
+    let err = run_source(source).expect_err("should fail");
+    assert!(err.to_string().contains("변경할 수 없습니다"));
 }

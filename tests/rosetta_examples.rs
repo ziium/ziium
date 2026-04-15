@@ -196,7 +196,7 @@ fn runs_korean_comparison_all_predicates() {
 #[test]
 fn runs_while_zero_iterations() {
     let source = indoc! {r#"
-        횟수는 0이다
+        횟수에 0을 넣는다
         횟수 > 0인 동안
           "실행됨"을 출력한다
           횟수를 횟수 - 1로 바꾼다
@@ -215,8 +215,8 @@ fn runs_while_zero_iterations() {
 #[test]
 fn runs_nested_while_loops() {
     let source = indoc! {"
-        행은 1이다
-        열은 0이다
+        행에 1을 넣는다
+        열에 0을 넣는다
         행 <= 2인 동안
           열을 1로 바꾼다
           열 <= 3인 동안
@@ -374,7 +374,7 @@ fn runs_fibonacci_recursive() {
             숫자를 돌려준다
           피보나치(숫자 - 1) + 피보나치(숫자 - 2)를 돌려준다
 
-        순서는 0이다
+        순서에 0을 넣는다
         순서 < 8인 동안
           피보나치(순서)를 출력한다
           순서를 순서 + 1로 바꾼다
@@ -602,7 +602,7 @@ fn rejects_length_on_non_collection() {
 fn runs_list_create_and_iterate() {
     let source = indoc! {r#"
         과일들은 ["사과", "바나나", "포도"]이다
-        차례는 0이다
+        차례에 0을 넣는다
         차례 < 과일들의 길이인 동안
           과일들[차례]를 출력한다
           차례를 차례 + 1로 바꾼다
@@ -826,7 +826,7 @@ fn runs_transform_call_syntax() {
 #[test]
 fn runs_fizzbuzz() {
     let source = indoc! {r#"
-        숫자는 1이다
+        숫자에 1을 넣는다
         숫자 <= 15인 동안
           숫자 % 15 == 0이면
             "FizzBuzz"를 출력한다
@@ -877,8 +877,8 @@ fn runs_euclidean_gcd() {
 fn runs_collatz_sequence_length() {
     let source = indoc! {"
         콜라츠 함수는 시작값을 받아
-          횟수는 0이다
-          현재는 시작값이다
+          횟수에 0을 넣는다
+          현재에 시작값을 넣는다
           현재 != 1인 동안
             현재 % 2 == 0이면
               현재를 현재 / 2로 바꾼다
@@ -902,8 +902,8 @@ fn runs_collatz_sequence_length() {
 fn runs_palindrome_check() {
     let source = indoc! {r#"
         회문검사 함수는 단어를 받아
-          왼쪽은 0이다
-          오른쪽은 단어의 길이 - 1이다
+          왼쪽에 0을 넣는다
+          오른쪽에 단어의 길이 - 1을 넣는다
           왼쪽 < 오른쪽인 동안
             단어[왼쪽] != 단어[오른쪽]이면
               거짓을 돌려준다
@@ -927,9 +927,9 @@ fn runs_palindrome_check() {
 fn runs_binary_search() {
     let source = indoc! {"
         이진탐색 함수는 목록, 찾는값을 받아
-          왼쪽은 0이다
-          오른쪽은 목록의 길이 - 1이다
-          중간은 0이다
+          왼쪽에 0을 넣는다
+          오른쪽에 목록의 길이 - 1을 넣는다
+          중간에 0을 넣는다
           왼쪽 <= 오른쪽인 동안
             중간을 (왼쪽 + 오른쪽) / 2로 바꾼다
             목록[중간] == 찾는값이면
@@ -956,8 +956,8 @@ fn runs_binary_search() {
 fn runs_number_classifier() {
     let source = indoc! {r#"
         분류 함수는 숫자를 받아
-          약수합은 0이다
-          나눔수는 1이다
+          약수합에 0을 넣는다
+          나눔수에 1을 넣는다
           나눔수 < 숫자인 동안
             숫자 % 나눔수 == 0이면
               약수합을 약수합 + 나눔수로 바꾼다
@@ -1012,8 +1012,8 @@ fn runs_towers_of_hanoi() {
 fn runs_iterative_power() {
     let source = indoc! {"
         거듭제곱 함수는 밑, 지수를 받아
-          결과는 1이다
-          횟수는 0이다
+          결과에 1을 넣는다
+          횟수에 0을 넣는다
           횟수 < 지수인 동안
             결과를 결과 * 밑으로 바꾼다
             횟수를 횟수 + 1로 바꾼다
@@ -1037,9 +1037,9 @@ fn explore_bubble_sort() {
     let source = indoc! {"
         숫자들은 [5, 3, 8, 1, 9, 2]이다
         크기는 숫자들의 길이이다
-        바깥은 0이다
+        바깥에 0을 넣는다
         바깥 < 크기 - 1인 동안
-          안쪽은 0이다
+          안쪽에 0을 넣는다
           안쪽 < 크기 - 1 - 바깥인 동안
             숫자들[안쪽] > 숫자들[안쪽 + 1]이면
               임시는 숫자들[안쪽]이다
@@ -1061,7 +1061,7 @@ fn explore_bubble_sort() {
 fn explore_foreach_sum() {
     let source = indoc! {"
         숫자들은 [10, 20, 30, 40]이다
-        합계는 0이다
+        합계에 0을 넣는다
         숫자들의 각각 항목에 대해
           합계를 합계 + 항목으로 바꾼다
         합계를 출력한다
