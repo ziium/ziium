@@ -852,3 +852,49 @@ fn runs_exist_binding_with_foreach() {
     "};
     assert_output(source, &["사과", "배", "감"]);
 }
+
+// ---------------------------------------------------------------------------
+// Choose 결과적 프레임
+// ---------------------------------------------------------------------------
+
+#[test]
+fn runs_choose_resultive_bind_default() {
+    let source = indoc! {r#"
+        선택지는 ["사과", "배", "감"]이다
+        결과는 선택지에서 고른 것이다
+        결과를 출력한다
+    "#};
+    assert_output(source, &["사과"]);
+}
+
+#[test]
+fn runs_choose_effect_default() {
+    let source = indoc! {r#"
+        선택지는 ["사과", "배", "감"]이다
+        선택지에서 고른다
+        "완료"를 출력한다
+    "#};
+    assert_output(source, &["완료"]);
+}
+
+#[test]
+fn rejects_choose_on_empty_list() {
+    let source = indoc! {r#"
+        빈목록은 []이다
+        결과는 빈목록에서 고른 것이다
+    "#};
+    let err = run_source(source).expect_err("should fail on empty list");
+    assert!(err.to_string().contains("빈 목록에서는 고를 수 없습니다"));
+}
+
+#[test]
+fn rejects_choose_on_non_list() {
+    let source = indoc! {r#"
+        숫자는 42이다
+        결과는 숫자에서 고른 것이다
+    "#};
+    let err = run_source(source).expect_err("should fail on non-list");
+    assert!(err
+        .to_string()
+        .contains("목록에만 사용할 수 있습니다"));
+}
