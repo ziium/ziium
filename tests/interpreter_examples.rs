@@ -894,9 +894,7 @@ fn rejects_choose_on_non_list() {
         결과는 숫자에서 고른 것이다
     "#};
     let err = run_source(source).expect_err("should fail on non-list");
-    assert!(err
-        .to_string()
-        .contains("목록에만 사용할 수 있습니다"));
+    assert!(err.to_string().contains("목록에만 사용할 수 있습니다"));
 }
 
 // ---------------------------------------------------------------------------
@@ -909,9 +907,10 @@ fn rejects_named_call_on_builtin() {
         길이를 { 값: "안녕" }로 호출한다
     "#};
     let err = run_source(source).expect_err("should fail");
-    assert!(err
-        .to_string()
-        .contains("이름 붙은 호출을 사용할 수 없습니다"));
+    assert!(
+        err.to_string()
+            .contains("이름 붙은 호출을 사용할 수 없습니다")
+    );
 }
 
 #[test]
@@ -944,9 +943,7 @@ fn rejects_named_call_extra_key() {
 fn rejects_to_int_with_invalid_string() {
     let source = r#"결과는 "abc"으로 정수로이다"#;
     let err = run_source(source).expect_err("should fail");
-    assert!(err
-        .to_string()
-        .contains("문자열을 정수로 바꿀 수 없습니다"));
+    assert!(err.to_string().contains("문자열을 정수로 바꿀 수 없습니다"));
 }
 
 #[test]
@@ -960,9 +957,7 @@ fn rejects_to_int_with_bool() {
 fn rejects_to_float_with_invalid_string() {
     let source = r#"결과는 "xyz"으로 실수로이다"#;
     let err = run_source(source).expect_err("should fail");
-    assert!(err
-        .to_string()
-        .contains("문자열을 실수로 바꿀 수 없습니다"));
+    assert!(err.to_string().contains("문자열을 실수로 바꿀 수 없습니다"));
 }
 
 #[test]

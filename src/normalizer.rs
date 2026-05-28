@@ -34,9 +34,7 @@ pub fn normalize_tokens(tokens: Vec<Token>) -> Vec<Token> {
         }
 
         // P-1: Ident("나를") + 받아/돌려준다/출력한다 → 을/를 분리
-        if let Some((base, suffix_kind, suffix)) =
-            split_object_before_keyword(&tokens, index)
-        {
+        if let Some((base, suffix_kind, suffix)) = split_object_before_keyword(&tokens, index) {
             let token = &tokens[index];
             let base_len = base.chars().count();
             normalized.push(Token::new(
@@ -174,9 +172,10 @@ fn split_attached_statement_suffix(lexeme: &str) -> Option<(String, TokenKind, &
         ("에", TokenKind::Locative),
     ] {
         if let Some(base) = lexeme.strip_suffix(suffix)
-            && !base.is_empty() {
-                return Some((base.to_string(), kind, suffix));
-            }
+            && !base.is_empty()
+        {
+            return Some((base.to_string(), kind, suffix));
+        }
     }
 
     None
@@ -256,9 +255,11 @@ fn split_object_before_keyword(
     // should_split_word 가드에 의해 의도적으로 보존된 것이므로 건드리지 않는다.
     for (suffix, kind) in [("을", TokenKind::Object), ("를", TokenKind::Object)] {
         if let Some(base) = token.lexeme.strip_suffix(suffix)
-            && !base.is_empty() && base.chars().count() == 1 {
-                return Some((base.to_string(), kind, suffix));
-            }
+            && !base.is_empty()
+            && base.chars().count() == 1
+        {
+            return Some((base.to_string(), kind, suffix));
+        }
     }
     None
 }

@@ -115,12 +115,10 @@ pub fn run_source_web_with_choices(source: &str, choices_json: &str) -> WebRunRe
         },
         Err(_) => {
             let events = session.drain_events();
-            let events_json =
-                serde_json::to_string(&events).unwrap_or_else(|_| "[]".to_string());
+            let events_json = serde_json::to_string(&events).unwrap_or_else(|_| "[]".to_string());
 
             if let Some(opts) = pending.borrow().as_ref() {
-                let choices =
-                    serde_json::to_string(opts).unwrap_or_else(|_| "[]".to_string());
+                let choices = serde_json::to_string(opts).unwrap_or_else(|_| "[]".to_string());
                 WebRunResult {
                     ok: true,
                     output: String::new(),
@@ -246,23 +244,54 @@ pub fn highlight_web(source: &str) -> String {
 
 fn token_class(kind: TokenKind) -> &'static str {
     match kind {
-        TokenKind::Function | TokenKind::FunctionTopic | TokenKind::Copula
-        | TokenKind::If | TokenKind::Else | TokenKind::In | TokenKind::During
-        | TokenKind::Receive | TokenKind::Nothing | TokenKind::ReceiveNot | TokenKind::ReceiveNeg
-        | TokenKind::Print | TokenKind::Return | TokenKind::Change
-        | TokenKind::Store | TokenKind::Exist | TokenKind::Each | TokenKind::About
+        TokenKind::Function
+        | TokenKind::FunctionTopic
+        | TokenKind::Copula
+        | TokenKind::If
+        | TokenKind::Else
+        | TokenKind::In
+        | TokenKind::During
+        | TokenKind::Receive
+        | TokenKind::Nothing
+        | TokenKind::ReceiveNot
+        | TokenKind::ReceiveNeg
+        | TokenKind::Print
+        | TokenKind::Return
+        | TokenKind::Change
+        | TokenKind::Store
+        | TokenKind::Exist
+        | TokenKind::Each
+        | TokenKind::About
         | TokenKind::ResultMarker => "kw",
 
-        TokenKind::Topic | TokenKind::Subject | TokenKind::Object
-        | TokenKind::Gen | TokenKind::Locative | TokenKind::From | TokenKind::Direction
-        | TokenKind::Than | TokenKind::With | TokenKind::Amount => "pa",
+        TokenKind::Topic
+        | TokenKind::Subject
+        | TokenKind::Object
+        | TokenKind::Gen
+        | TokenKind::Locative
+        | TokenKind::From
+        | TokenKind::Direction
+        | TokenKind::Than
+        | TokenKind::With
+        | TokenKind::Amount => "pa",
 
         TokenKind::String => "str",
         TokenKind::Int | TokenKind::Float => "num",
 
-        TokenKind::Plus | TokenKind::Minus | TokenKind::Star | TokenKind::Slash | TokenKind::Percent
-        | TokenKind::Eq | TokenKind::Ne | TokenKind::Lt | TokenKind::Le | TokenKind::Gt | TokenKind::Ge
-        | TokenKind::And | TokenKind::Or | TokenKind::Not => "op",
+        TokenKind::Plus
+        | TokenKind::Minus
+        | TokenKind::Star
+        | TokenKind::Slash
+        | TokenKind::Percent
+        | TokenKind::Eq
+        | TokenKind::Ne
+        | TokenKind::Lt
+        | TokenKind::Le
+        | TokenKind::Gt
+        | TokenKind::Ge
+        | TokenKind::And
+        | TokenKind::Or
+        | TokenKind::Not => "op",
 
         TokenKind::True | TokenKind::False | TokenKind::None => "lit",
 

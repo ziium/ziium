@@ -100,28 +100,15 @@ impl Parser {
                     condition: expr,
                     body,
                 }
-            } else if self.at(TokenKind::Gen)
-                && self.nth_kind(1) == Some(TokenKind::Each)
-            {
+            } else if self.at(TokenKind::Gen) && self.nth_kind(1) == Some(TokenKind::Each) {
                 self.advance(); // consume Gen (의)
                 self.advance(); // consume Each (각각)
-                let var = self.expect_ident_token(
-                    "`각각` 뒤에는 반복 변수 이름이 필요합니다.",
-                )?;
-                self.metadata
-                    .declaration_spans
-                    .push(var.span.clone());
-                self.expect(
-                    TokenKind::Locative,
-                    "반복 변수 뒤에는 `에`가 와야 합니다.",
-                )?;
-                self.expect(
-                    TokenKind::About,
-                    "`에` 뒤에는 `대해`가 와야 합니다.",
-                )?;
-                let body = self.parse_indented_block(
-                    "`에 대해` 뒤에는 들여쓴 블록이 와야 합니다.",
-                )?;
+                let var = self.expect_ident_token("`각각` 뒤에는 반복 변수 이름이 필요합니다.")?;
+                self.metadata.declaration_spans.push(var.span.clone());
+                self.expect(TokenKind::Locative, "반복 변수 뒤에는 `에`가 와야 합니다.")?;
+                self.expect(TokenKind::About, "`에` 뒤에는 `대해`가 와야 합니다.")?;
+                let body =
+                    self.parse_indented_block("`에 대해` 뒤에는 들여쓴 블록이 와야 합니다.")?;
                 Stmt::ForEach {
                     collection: expr,
                     variable: var.lexeme,
@@ -133,17 +120,10 @@ impl Parser {
                 let arg_or_value = self.parse_expression_without_transform(0)?;
                 if self.match_kind(TokenKind::Subject) {
                     // 존재 바인딩: `바구니에 [1,2,3]이 있다`
-                    self.expect(
-                        TokenKind::Exist,
-                        "`이`/`가` 뒤에는 `있다`가 와야 합니다.",
-                    )?;
+                    self.expect(TokenKind::Exist, "`이`/`가` 뒤에는 `있다`가 와야 합니다.")?;
                     let name = match expr {
                         Expr::Name(name) => name,
-                        _ => {
-                            return Err(
-                                self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")
-                            )
-                        }
+                        _ => return Err(self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")),
                     };
                     let name_span = self.metadata.expr_spans.remove(name_spans_end - 1);
                     self.metadata.declaration_spans.push(name_span);
@@ -155,17 +135,10 @@ impl Parser {
                     }
                 } else if self.match_kind(TokenKind::Object) {
                     // 가변 바인딩: `횟수에 0을 넣는다`
-                    self.expect(
-                        TokenKind::Store,
-                        "`를`/`을` 뒤에는 `넣는다`가 와야 합니다.",
-                    )?;
+                    self.expect(TokenKind::Store, "`를`/`을` 뒤에는 `넣는다`가 와야 합니다.")?;
                     let name = match expr {
                         Expr::Name(name) => name,
-                        _ => {
-                            return Err(
-                                self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")
-                            )
-                        }
+                        _ => return Err(self.error_here("`에` 앞에는 변수 이름이 와야 합니다.")),
                     };
                     // Name expr pushed 1 span to expr_spans; transfer to declaration_spans
                     let name_span = self.metadata.expr_spans.remove(name_spans_end - 1);
@@ -209,9 +182,8 @@ impl Parser {
                                 "`로`/`으로` 뒤에는 `바꾼다` 또는 `호출한다`가 와야 합니다.",
                             )?;
                             if !matches!(rhs, Expr::Record(_)) {
-                                return Err(self.error_here(
-                                    "이름 붙은 호출에 넘긴 값은 레코드여야 합니다.",
-                                ));
+                                return Err(self
+                                    .error_here("이름 붙은 호출에 넘긴 값은 레코드여야 합니다."));
                             }
                             self.consume_optional_period();
                             Stmt::NamedCall {
@@ -241,9 +213,7 @@ impl Parser {
         match expr {
             Expr::Index { base, index } => match base.as_ref() {
                 Expr::Name(name) => Ok((name.clone(), (**index).clone())),
-                _ => Err(self.error_here(
-                    "인덱스 재대입은 현재 `변수[인덱스]` 형태만 지원합니다.",
-                )),
+                _ => Err(self.error_here("인덱스 재대입은 현재 `변수[인덱스]` 형태만 지원합니다.")),
             },
             _ => Err(self.error_here("대입 대상이 `변수[인덱스]` 형식이 아닙니다.")),
         }
@@ -369,7 +339,11 @@ impl Parser {
             receiver
         };
         self.consume_optional_period();
-        Ok(Stmt::Bind { name, value, mutable: false })
+        Ok(Stmt::Bind {
+            name,
+            value,
+            mutable: false,
+        })
     }
 
     fn parse_resultive_expression(&mut self, receiver: Expr) -> Result<Expr, ParseError> {
@@ -411,22 +385,21 @@ impl Parser {
 
     /// `X를 Y한 것이다` → TransformCall { input: X, callee: "Y" }
     fn parse_applied_bind_expression(&mut self, input: Expr) -> Result<Expr, ParseError> {
-        let callee_token = self.expect_ident_token(
-            "`를` 뒤에는 함수 이름이 필요합니다. (예: `5를 두배한 것이다`)",
-        )?;
+        let callee_token = self
+            .expect_ident_token("`를` 뒤에는 함수 이름이 필요합니다. (예: `5를 두배한 것이다`)")?;
         let callee = match callee_token.lexeme.strip_suffix('한') {
             Some(base) if !base.is_empty() => base.to_string(),
             Some(_) => {
                 return Err(ParseError::new(
                     "함수 이름이 비어있습니다.",
                     Some(callee_token.span),
-                ))
+                ));
             }
             None => {
                 return Err(ParseError::new(
                     "함수 이름은 `한`으로 끝나야 합니다. (예: `두배한 것이다`)",
                     Some(callee_token.span),
-                ))
+                ));
             }
         };
         self.metadata

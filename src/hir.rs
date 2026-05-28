@@ -245,7 +245,11 @@ impl Expr {
 
 fn lower_stmt(stmt: &ast::Stmt, cursor: &mut LoweringCursor) -> Stmt {
     match stmt {
-        ast::Stmt::Bind { name, value, mutable } => {
+        ast::Stmt::Bind {
+            name,
+            value,
+            mutable,
+        } => {
             let value = lower_expr(value, cursor);
             Stmt::Bind {
                 name: name.clone(),

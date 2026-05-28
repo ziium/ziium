@@ -94,6 +94,10 @@ v0.1 코어 위에 v0.2에서 메시지 프레임 연구 원칙이 고정되었�
 # 파일 실행
 cargo run -- samples/00_hello_everyone.zm
 
+# 검사
+cargo run -- check samples/00_hello_everyone.zm
+cargo run -- check --json samples/00_hello_everyone.zm
+
 # REPL (빈 줄로 블록 실행)
 cargo run -- repl
 
@@ -108,6 +112,8 @@ cargo test
 cargo run -- tokens path/to/program.zm   # 토큰 보기
 cargo run -- ast path/to/program.zm      # AST 보기
 cargo run -- hir path/to/program.zm      # HIR 보기
+cargo run -- rules --agent               # 에이전트용 현재 규칙 보기
+cargo run -- explain MSG301              # 진단 코드 설명 보기
 ```
 
 </details>

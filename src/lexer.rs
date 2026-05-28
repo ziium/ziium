@@ -522,10 +522,8 @@ fn exact_word_kind(word: &str) -> Option<TokenKind> {
 
 fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
     // "인"은 여기서 제거 — normalizer가 "X인 동안" 문맥에서만 분리 (P-3)
-    const KEYWORD_SUFFIXES: [(&str, TokenKind); 2] = [
-        ("이면", TokenKind::If),
-        ("이다", TokenKind::Copula),
-    ];
+    const KEYWORD_SUFFIXES: [(&str, TokenKind); 2] =
+        [("이면", TokenKind::If), ("이다", TokenKind::Copula)];
     // "이"/"가" 주격 조사는 여기서 제거 — normalizer가 문맥 기반으로 처리 (P-2)
     const PARTICLES: [(&str, TokenKind); 15] = [
         ("만큼", TokenKind::Amount),
@@ -573,7 +571,10 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 fn should_split_word(base: &str, suffix: &str) -> bool {
     // "이다"/"이면"은 키워드 접미사이므로 base 길이와 무관하게 항상 분리한다.
     // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.
-    if matches!(suffix, "으로" | "은" | "는" | "보다" | "만큼" | "에" | "이면" | "이다") {
+    if matches!(
+        suffix,
+        "으로" | "은" | "는" | "보다" | "만큼" | "에" | "이면" | "이다"
+    ) {
         return true;
     }
 

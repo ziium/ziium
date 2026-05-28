@@ -521,8 +521,7 @@ impl<'a> LexerJa<'a> {
 
         match start_class {
             ScriptClass::Latin => {
-                while end < chars.len()
-                    && (chars[end] == '_' || chars[end].is_ascii_alphanumeric())
+                while end < chars.len() && (chars[end] == '_' || chars[end].is_ascii_alphanumeric())
                 {
                     end += 1;
                 }
@@ -557,22 +556,23 @@ impl<'a> LexerJa<'a> {
         // This handles okurigana (送り仮名): e.g. さを → さ(Ident) + を(Object)
         // Analogous to Korean split_attached_word.
         if start_class == ScriptClass::Hiragana
-            && let Some((base_chars, kind)) = split_trailing_suffix(&segment) {
-                let split_pos = index + base_chars;
-                let base: String = chars[index..split_pos].iter().collect();
-                let suffix: String = chars[split_pos..end].iter().collect();
-                self.tokens.push(Token::new(
-                    TokenKind::Ident,
-                    base,
-                    Span::new(line_no, index + 1, line_no, split_pos + 1),
-                ));
-                self.tokens.push(Token::new(
-                    kind,
-                    suffix,
-                    Span::new(line_no, split_pos + 1, line_no, end + 1),
-                ));
-                return Ok(end);
-            }
+            && let Some((base_chars, kind)) = split_trailing_suffix(&segment)
+        {
+            let split_pos = index + base_chars;
+            let base: String = chars[index..split_pos].iter().collect();
+            let suffix: String = chars[split_pos..end].iter().collect();
+            self.tokens.push(Token::new(
+                TokenKind::Ident,
+                base,
+                Span::new(line_no, index + 1, line_no, split_pos + 1),
+            ));
+            self.tokens.push(Token::new(
+                kind,
+                suffix,
+                Span::new(line_no, split_pos + 1, line_no, end + 1),
+            ));
+            return Ok(end);
+        }
 
         self.tokens.push(Token::new(
             TokenKind::Ident,

@@ -698,8 +698,7 @@ fn parses_mutable_bind() {
 
 #[test]
 fn parses_index_assignment() {
-    let program =
-        parse_source("숫자들[0]을 99로 바꾼다").expect("parse should succeed");
+    let program = parse_source("숫자들[0]을 99로 바꾼다").expect("parse should succeed");
     assert_eq!(
         program.statements,
         vec![Stmt::IndexAssign {
@@ -712,8 +711,7 @@ fn parses_index_assignment() {
 
 #[test]
 fn parses_index_assignment_with_expression_index() {
-    let program =
-        parse_source("목록[인덱스 + 1]을 값으로 바꾼다").expect("parse should succeed");
+    let program = parse_source("목록[인덱스 + 1]을 값으로 바꾼다").expect("parse should succeed");
     assert_eq!(
         program.statements,
         vec![Stmt::IndexAssign {
@@ -747,8 +745,7 @@ fn parses_foreach() {
 
 #[test]
 fn parses_exist_binding() {
-    let program =
-        parse_source("바구니에 [1, 2, 3]이 있다").expect("parse should succeed");
+    let program = parse_source("바구니에 [1, 2, 3]이 있다").expect("parse should succeed");
     assert_eq!(
         program.statements,
         vec![Stmt::Bind {

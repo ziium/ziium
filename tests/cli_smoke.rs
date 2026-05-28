@@ -3,14 +3,19 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 fn write_temp_program(contents: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock should work")
         .as_nanos();
-    let path = env::temp_dir().join(format!("ziium_cli_{unique}.zm"));
+    let count = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let process = std::process::id();
+    let path = env::temp_dir().join(format!("ziium_cli_{process}_{unique}_{count}.zm"));
     fs::write(&path, contents).expect("temp program should be writable");
     path
 }
@@ -200,4 +205,114 @@ fn cli_prints_help() {
     assert!(stdout.contains("사용법"));
     assert!(stdout.contains("run"));
     assert!(stdout.contains("repl"));
+}
+
+#[test]
+fn cli_prints_agent_rules() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["rules", "--agent"])
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("# 지음 에이전트 규칙"));
+    assert!(stdout.contains("truthiness를 도입하지 않는다"));
+    assert!(stdout.contains("허용 메시지"));
+    assert!(stdout.contains("점 표기를 도입하지 않는다"));
+}
+
+#[test]
+fn cli_explains_diagnostic_code() {
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["explain", "MSG301"])
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("MSG301"));
+    assert!(stdout.contains("닫힌 메시지 집합"));
+    assert!(stdout.contains("ziium rules --agent"));
+}
+
+#[test]
+fn cli_check_json_reports_success() {
+    let path = write_temp_program("이름은 \"철수\"이다");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["check", "--json", path.to_str().expect("utf-8 path")])
+        .output()
+        .expect("cli should run");
+
+    assert!(output.status.success());
+    let value: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(value["schemaVersion"], 1);
+    assert_eq!(value["ok"], true);
+    assert_eq!(value["diagnostics"].as_array().unwrap().len(), 0);
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn cli_check_json_reports_frontend_error() {
+    let path = write_temp_program("이름은 \"철수\"이다\n이름을 출력해");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["check", "--json", path.to_str().expect("utf-8 path")])
+        .output()
+        .expect("cli should run");
+
+    assert!(!output.status.success());
+    let value: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(value["schemaVersion"], 1);
+    assert_eq!(value["ok"], false);
+    assert_eq!(value["diagnostics"][0]["severity"], "error");
+    assert_eq!(value["diagnostics"][0]["phase"], "parse");
+    assert!(
+        value["diagnostics"][0]["code"]
+            .as_str()
+            .unwrap()
+            .starts_with("PAR")
+    );
+    assert!(
+        value["diagnostics"][0]["expected"]
+            .as_str()
+            .unwrap()
+            .contains("문장")
+    );
+    assert!(
+        value["diagnostics"][0]["help"]
+            .as_str()
+            .unwrap()
+            .contains("ziium explain")
+    );
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn cli_check_json_reports_resolve_error() {
+    let path = write_temp_program("없는값을 출력한다");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_ziium"))
+        .args(["check", "--json", path.to_str().expect("utf-8 path")])
+        .output()
+        .expect("cli should run");
+
+    assert!(!output.status.success());
+    let value: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(value["schemaVersion"], 1);
+    assert_eq!(value["ok"], false);
+    assert_eq!(value["diagnostics"][0]["phase"], "resolve");
+    assert_eq!(value["diagnostics"][0]["code"], "NAM003");
+    assert!(value["diagnostics"][0]["message"]
+        .as_str()
+        .unwrap()
+        .contains("아직 정의되지 않았습니다"));
+
+    let _ = fs::remove_file(path);
 }

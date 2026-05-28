@@ -201,10 +201,7 @@ impl InterpreterSession {
             .map_err(RunError::from)
     }
 
-    pub fn set_choose_fn(
-        &mut self,
-        f: impl Fn(&[Value]) -> Result<Value, RuntimeError> + 'static,
-    ) {
+    pub fn set_choose_fn(&mut self, f: impl Fn(&[Value]) -> Result<Value, RuntimeError> + 'static) {
         self.interpreter.choose_fn = Some(Box::new(f));
     }
 
@@ -318,7 +315,7 @@ impl Interpreter {
                     Value::Int(i) if i >= 0 => i as usize,
                     _ => {
                         return Err(RuntimeError::new("인덱스는 0 이상의 정수여야 합니다.")
-                            .with_fallback_span(stmt_span))
+                            .with_fallback_span(stmt_span));
                     }
                 };
 
@@ -326,10 +323,8 @@ impl Interpreter {
                     Value::List(items) => {
                         let mut items = items.borrow_mut();
                         if idx >= items.len() {
-                            return Err(
-                                RuntimeError::new("목록 인덱스가 범위를 벗어났습니다.")
-                                    .with_fallback_span(stmt_span),
-                            );
+                            return Err(RuntimeError::new("목록 인덱스가 범위를 벗어났습니다.")
+                                .with_fallback_span(stmt_span));
                         }
                         items[idx] = new_val;
                         Ok(ExecSignal::Continue)
@@ -695,9 +690,7 @@ impl Interpreter {
                 self.call_depth += 1;
                 if self.call_depth > MAX_CALL_DEPTH {
                     self.call_depth -= 1;
-                    return Err(RuntimeError::new(
-                        "재귀 깊이 제한을 초과했습니다.",
-                    ));
+                    return Err(RuntimeError::new("재귀 깊이 제한을 초과했습니다."));
                 }
 
                 let frame = Environment::new(Some(function.env.clone()));
@@ -895,9 +888,7 @@ impl Interpreter {
             }
             SendSelector::Transform(callee_name) => {
                 if !args.is_empty() {
-                    return Err(RuntimeError::new(
-                        "변환 호출은 추가 값을 받을 수 없습니다.",
-                    ));
+                    return Err(RuntimeError::new("변환 호출은 추가 값을 받을 수 없습니다."));
                 }
                 let callee = lookup_value(&env, callee_name)
                     .map_err(|err| err.with_fallback_span(expr_span.clone()))?;
@@ -1047,9 +1038,7 @@ impl Interpreter {
                 Value::List(items) => {
                     let cloned: Vec<Value> = items.borrow().clone();
                     if cloned.is_empty() {
-                        return Err(RuntimeError::new(
-                            "빈 목록에서는 고를 수 없습니다.",
-                        ));
+                        return Err(RuntimeError::new("빈 목록에서는 고를 수 없습니다."));
                     }
                     if let Some(ref choose) = self.choose_fn {
                         choose(&cloned)

@@ -335,7 +335,12 @@ impl Resolver {
         result
     }
 
-    fn declare(&mut self, name: &str, span: Option<Span>, mutable: bool) -> Result<(), ResolveError> {
+    fn declare(
+        &mut self,
+        name: &str,
+        span: Option<Span>,
+        mutable: bool,
+    ) -> Result<(), ResolveError> {
         let current_scope = self
             .scopes
             .last_mut()
@@ -438,9 +443,7 @@ fn merge_if_scope(before: &Scope, then_scope: &Scope, else_scope: Option<&Scope>
 
     if let Some(else_scope) = else_scope {
         for (name, &mutable) in &then_scope.defined_now {
-            if !before.defined_now.contains_key(name)
-                && else_scope.defined_now.contains_key(name)
-            {
+            if !before.defined_now.contains_key(name) && else_scope.defined_now.contains_key(name) {
                 defined_now.insert(name.clone(), mutable);
             }
         }

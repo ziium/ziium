@@ -6,7 +6,7 @@
 
 - 구현 언어: Rust
 - 실행 모델: tree-walk interpreter
-- 제공 도구: CLI, REPL, 테스트 세트
+- 제공 도구: CLI, REPL, 에이전트용 검사/규칙 출력, 테스트 세트
 - 현재 단계: 최소 실행 가능한 프런트엔드와 인터프리터가 동작한다.
 
 아직 없는 것:
@@ -31,6 +31,17 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 - `hir lowering`: surface AST를 `Send` 중심 HIR로 낮춘다
 - `interpreter`: HIR 실행, 내장 함수/메시지 처리, 런타임 진단
 - `interpreter` 실행 결과는 출력, 캔버스 프레임, `쉬기` 시간을 같은 이벤트 열로도 유지한다.
+
+### CLI 검사와 에이전트 인터페이스
+
+`src/main.rs`는 사람용 실행 명령과 에이전트용 검사 명령을 함께 제공한다.
+
+- `ziium check <파일>`: lexer -> parser -> resolver -> HIR lowering까지 검사한다.
+- `ziium check --json <파일>`: 성공/실패를 `schemaVersion`, `ok`, `diagnostics` 구조로 출력한다.
+- `ziium rules --agent`: 현재 닫힌 문법/메시지 경계를 짧은 Markdown으로 출력한다.
+- `ziium explain <진단코드>`: 안정적인 진단 코드의 의미와 다음 확인 명령을 출력한다.
+
+`check --json`의 diagnostic 항목은 `severity`, `phase`, `code`, `line`, `column`, `expected`, `actual`, `help`, `fixSafety`, `repair`를 포함한다. 현재 repair는 자동 패치가 아니라 사람이 검토할 수 있는 수정 방향만 제공한다.
 
 ### 현재 내부 의미 모델
 
@@ -98,6 +109,7 @@ cargo test
 - resolver 테스트
 - interpreter 테스트
 - CLI/REPL 스모크 테스트
+- 에이전트용 CLI 계약 테스트
 - parser fixture 문서 개수 검증
 
 ### parser fixture
@@ -161,6 +173,7 @@ cargo test
 - README와 샘플의 핵심 예제가 대부분 실행된다.
 - parser 회귀 테스트가 안정적으로 유지된다.
 - 진단이 줄/열과 코드 프레임을 제공한다.
+- CLI가 에이전트용 JSON 진단과 규칙 출력을 제공한다.
 
 ### v0.2 후보
 

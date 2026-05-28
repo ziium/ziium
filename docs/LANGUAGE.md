@@ -779,6 +779,9 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 - 가능한 경우 줄/열 span을 포함한다.
 - 실행 오류는 호출 경로를 함께 보여준다.
 - 코드 프레임은 오류 줄과 주변 문맥을 함께 보여준다.
+- CLI 검사 결과는 사람이 읽는 기본 출력과 에이전트가 읽는 `--json` 출력을 구분한다.
+- JSON 진단은 안정적인 `code`, `expected`, `actual`, `help`, `fixSafety`, `repair` 필드를 포함한다.
+- `ziium explain <진단코드>`는 코드별 설명을 제공하고, `ziium rules --agent`는 현재 문법 경계를 요약한다.
 
 예:
 
@@ -786,6 +789,12 @@ source -> lexer -> normalizer -> parser -> resolver -> hir lowering -> interpret
 [실행 오류]
 위치: 2번째 줄 5번째 열
 메시지: 조건식은 불리언이어야 합니다.
+```
+
+JSON 검사 예:
+
+```bash
+ziium check --json samples/00_hello_everyone.zm
 ```
 
 ## 빠른 예제
