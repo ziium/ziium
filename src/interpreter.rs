@@ -113,13 +113,15 @@ pub enum CanvasCommand {
 
 const MAX_CALL_DEPTH: usize = 64;
 
+type ChooseFn = Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
+
 struct Interpreter {
     globals: EnvRef,
     output: Vec<String>,
     current_canvas_commands: Vec<CanvasCommand>,
     canvas_frames: Vec<CanvasFrame>,
     events: Vec<ExecutionEvent>,
-    choose_fn: Option<Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>>,
+    choose_fn: Option<ChooseFn>,
     call_depth: usize,
 }
 

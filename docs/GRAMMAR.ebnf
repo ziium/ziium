@@ -54,7 +54,7 @@ resultive_stmt  = expression, FROM, RESULTIVE_ROLE, OBJECT, POP_EFFECT, [ PERIOD
 call_stmt       = call_like_expr, [ PERIOD ] ;
 
 if_stmt         = expression, IF, if_body
-                | expression, SUBJECT, expression, THAN, CMP_VERB, if_body ;
+                | expression, SUBJECT, expression, ( THAN | WITH ), CMP_VERB, if_body ;
 if_body         = newline, INDENT, block, DEDENT,
                   [ ELSE, newline, INDENT, block, DEDENT ]
                 | statement, [ ELSE, statement ] ;
@@ -172,6 +172,7 @@ RESULT_MARKER   = "것이다" ;
 CALL_VERB       = IDENT("호출한다") ;
 SUBJECT         = "이" | "가" ;
 THAN            = "보다" ;
+WITH            = "과" | "와" | "이랑" | "랑" ;
 CMP_VERB        = IDENT("크면") | IDENT("작으면") | IDENT("같으면") | IDENT("다르면") ;
 AMOUNT          = "만큼" ;
 CHANGE_VERB     = IDENT("줄인다") | IDENT("늘린다") ;
