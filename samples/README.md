@@ -29,3 +29,4 @@ cargo run -- samples/00_hello_everyone.zm
 - `16_type_conversion.zm`: `문자열로`, `정수로`, `실수로` 타입 변환
 - `17_mutable_vs_const.zm`: `이다`(불변)와 `넣는다`(가변) 바인딩 구분
 - `18_inline_if_else.zm`: 단문 if-else와 guard clause
+- `13_xor_neural_network.zm`: XOR를 학습하고 테스트하는 단순한 신경망
