@@ -177,3 +177,26 @@ fn allows_reassign_to_function_param() {
     let result = run_source(source).expect("should succeed");
     assert_eq!(result.output, vec!["6".to_string()]);
 }
+
+// P-5: 조사로 잘린 이름에 대한 힌트
+
+#[test]
+fn hints_attached_with_particle_when_name_is_undefined() {
+    let source = indoc! {"
+        점수는 1이다
+        점수가 검색결과 같으면
+          1을 출력한다
+    "};
+    let err = run_source(source).expect_err("검색결 should be undefined");
+    let message = err.to_string();
+    assert!(message.contains("`검색결`은(는) 아직 정의되지 않았습니다"));
+    assert!(message.contains("`검색결과`"), "message was: {message}");
+}
+
+#[test]
+fn hints_attached_direction_particle_when_name_is_undefined() {
+    let err = run_source("값은 이동경로 문자열로이다").expect_err("이동경 should be undefined");
+    let message = err.to_string();
+    assert!(message.contains("`이동경`은(는) 아직 정의되지 않았습니다"));
+    assert!(message.contains("`이동경로`"), "message was: {message}");
+}

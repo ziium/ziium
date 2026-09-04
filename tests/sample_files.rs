@@ -82,3 +82,7 @@ fn sample_17_mutable_vs_const() {
 fn sample_18_inline_if_else() {
     run_sample("samples/18_inline_if_else.zm");
 }
+#[test]
+fn sample_19_xor_neural_network() {
+    run_sample("samples/19_xor_neural_network.zm");
+}

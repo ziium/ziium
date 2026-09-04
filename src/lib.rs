@@ -28,5 +28,5 @@ pub use lexer_ja::lex_ja;
 pub use message::{KeywordMessage, ResultiveMessage, UnaryMessage, WordMessage};
 pub use normalizer::normalize_tokens;
 pub use parser::{parse_source, parse_tokens};
-pub use resolver::{ResolverSession, resolve_hir_program, resolve_program};
+pub use resolver::{ResolverSession, resolve_hir_program, resolve_program, with_particle_hint};
 pub use token::{Span, Token, TokenKind};

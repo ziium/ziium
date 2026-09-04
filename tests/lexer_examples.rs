@@ -272,3 +272,208 @@ fn rejects_inconsistent_dedent() {
     let err = lex(source).expect_err("inconsistent dedent should fail");
     assert!(matches!(err, LexError::InconsistentDedent { .. }));
 }
+
+// P-5: 조사 음절로 끝나는 식별자 보호
+
+#[test]
+fn keeps_with_syllable_in_bare_identifier_before_comma() {
+    assert_lex(
+        "갱신 함수는 기울기결과, 학습률을 받아",
+        &[
+            "IDENT(\"갱신\")",
+            "Function(\"함수\")",
+            "FunctionTopic(\"는\")",
+            "IDENT(\"기울기결과\")",
+            "Comma(\",\")",
+            "IDENT(\"학습률\")",
+            "Object(\"을\")",
+            "Receive(\"받아\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_with_syllable_in_bare_identifier_before_paren() {
+    assert_lex(
+        "역전파(신경망, 순전파결과)",
+        &[
+            "IDENT(\"역전파\")",
+            "LParen(\"(\")",
+            "IDENT(\"신경망\")",
+            "Comma(\",\")",
+            "IDENT(\"순전파결과\")",
+            "RParen(\")\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_with_syllable_before_binary_operator() {
+    assert_lex(
+        "값은 순전파결과 - 1이다",
+        &[
+            "IDENT(\"값\")",
+            "Topic(\"은\")",
+            "IDENT(\"순전파결과\")",
+            "Minus(\"-\")",
+            "INT(1)",
+            "Copula(\"이다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_rang_syllable_in_bare_identifier() {
+    assert_lex(
+        "(첫사랑)을 출력한다",
+        &[
+            "LParen(\"(\")",
+            "IDENT(\"첫사랑\")",
+            "RParen(\")\")",
+            "Object(\"을\")",
+            "Print(\"출력한다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn splits_with_particle_only_before_comparison_verb() {
+    assert_lex(
+        "점수가 최고점과 같으면",
+        &[
+            "IDENT(\"점수\")",
+            "Subject(\"가\")",
+            "IDENT(\"최고점\")",
+            "With(\"과\")",
+            "IDENT(\"같으면\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "사과가 배이랑 같으면",
+        &[
+            "IDENT(\"사과\")",
+            "Subject(\"가\")",
+            "IDENT(\"배\")",
+            "With(\"이랑\")",
+            "IDENT(\"같으면\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "점수가 19와 다르면",
+        &[
+            "IDENT(\"점수\")",
+            "Subject(\"가\")",
+            "INT(19)",
+            "With(\"와\")",
+            "IDENT(\"다르면\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_object_syllable_in_bare_identifier_before_closer() {
+    assert_lex(
+        "(작은마을)을 출력한다",
+        &[
+            "LParen(\"(\")",
+            "IDENT(\"작은마을\")",
+            "RParen(\")\")",
+            "Object(\"을\")",
+            "Print(\"출력한다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_direction_syllable_in_record_key_and_param() {
+    assert_lex(
+        "{ 이동경로: 1 }",
+        &[
+            "LBrace(\"{\")",
+            "IDENT(\"이동경로\")",
+            "Colon(\":\")",
+            "INT(1)",
+            "RBrace(\"}\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "열기 함수는 파일경로, 모드를 받아",
+        &[
+            "IDENT(\"열기\")",
+            "Function(\"함수\")",
+            "FunctionTopic(\"는\")",
+            "IDENT(\"파일경로\")",
+            "Comma(\",\")",
+            "IDENT(\"모드\")",
+            "Object(\"를\")",
+            "Receive(\"받아\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn keeps_particle_syllable_in_function_name() {
+    assert_lex(
+        "작은마을 함수는 아무것도 받지 않아",
+        &[
+            "IDENT(\"작은마을\")",
+            "Function(\"함수\")",
+            "FunctionTopic(\"는\")",
+            "Nothing(\"아무것도\")",
+            "ReceiveNot(\"받지\")",
+            "ReceiveNeg(\"않아\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
+fn still_splits_attached_particles_before_expression_or_verb() {
+    assert_lex(
+        "값을 파일경로로 바꾼다",
+        &[
+            "IDENT(\"값\")",
+            "Object(\"을\")",
+            "IDENT(\"파일경로\")",
+            "Direction(\"로\")",
+            "Change(\"바꾼다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "결과는 -7을 절대값한 것이다",
+        &[
+            "IDENT(\"결과\")",
+            "Topic(\"는\")",
+            "Minus(\"-\")",
+            "INT(7)",
+            "Object(\"을\")",
+            "IDENT(\"절대값한\")",
+            "ResultMarker(\"것이다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}

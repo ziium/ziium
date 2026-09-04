@@ -196,6 +196,7 @@ impl InterpreterSession {
         let hir_program = hir::lower_program_with_metadata(&program, Some(&metadata));
         self.resolver
             .resolve_hir_program(&hir_program)
+            .map_err(|err| crate::resolver::with_particle_hint(err, source))
             .map_err(crate::error::FrontendError::from)
             .map_err(RunError::from)?;
         self.interpreter

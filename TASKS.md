@@ -291,3 +291,24 @@
 - [x] `--version` / `--help` CLI 플래그
 - [x] REPL 히스토리 영속화 (`~/.ziium/history`)
 - [x] 낡은 주석 제거 + Clippy 수정
+
+## Plan 11: P-5 조사 분리 오른쪽 문맥 검증 ✅
+
+결정: `docs/DECISIONS.md` "2026-09-04 - 조사 분리는 오른쪽 문맥으로 검증한다"
+
+### 11-1. RED ✅
+- [x] `tests/lexer_examples.rs` — bare 식별자 보호 8개 + 계속 잘려야 하는 대조군 1개
+- [x] `tests/resolver_examples.rs` — 잘린 이름 힌트 2개 (`검색결과 같으면`, `이동경로 문자열로`)
+- [x] `tests/sample_files.rs` — 샘플 19 등록 + 기여자 원래 이름 복원 (PR #1 수용 테스트)
+
+### 11-2. GREEN ✅
+- [x] `src/lexer.rs` — PARTICLES에서 `과/와/이랑/랑` 제거
+- [x] `src/normalizer.rs` — `split_with_before_comparison_verb` (A층), `rejoin_particle_before_closer` (B층)
+- [x] `src/resolver.rs` — `with_particle_hint`, 실행/검사/JSON 경로 연결
+- [x] 전체 293 테스트 통과, clippy 0, 코퍼스 127파일 토큰 스트림 변화 0
+
+### 11-3. 문서 ✅
+- [x] `docs/DECISIONS.md` — 결정 기록 + 오전 미결 항목 연결
+- [x] `docs/LANGUAGE.md` — 식별자 절에 규칙과 잔여 모호성 명시
+- [x] `src/lexer.rs` 주석 갱신
+

@@ -11,7 +11,7 @@ use unicode_width::UnicodeWidthStr;
 use ziium::{
     FrontendError, InterpreterSession, LexError, ParseError, ResolveError, RunError, RuntimeError,
     Span, Token, TokenKind, Value, lex, lex_ja, parse_source, parse_source_to_hir, parse_tokens,
-    resolve_hir_program, resolve_program,
+    resolve_hir_program, resolve_program, with_particle_hint,
 };
 
 fn cli_choose(options: &[Value]) -> Result<Value, RuntimeError> {
@@ -208,7 +208,9 @@ fn run_check(source: &str, lang: &str) -> Result<(), FrontendError> {
         resolve_program(&program).map_err(FrontendError::Resolve)?;
     } else {
         let program = parse_source_to_hir(source)?;
-        resolve_hir_program(&program).map_err(FrontendError::Resolve)?;
+        resolve_hir_program(&program)
+            .map_err(|err| with_particle_hint(err, source))
+            .map_err(FrontendError::Resolve)?;
     }
     Ok(())
 }

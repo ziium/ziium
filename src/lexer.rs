@@ -525,9 +525,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
     const KEYWORD_SUFFIXES: [(&str, TokenKind); 2] =
         [("이면", TokenKind::If), ("이다", TokenKind::Copula)];
     // "이"/"가" 주격 조사는 여기서 제거 — normalizer가 문맥 기반으로 처리 (P-2)
-    const PARTICLES: [(&str, TokenKind); 15] = [
+    // "과"/"와"/"이랑"/"랑"도 여기서 제거 — normalizer가 비교 서술어 앞에서만 분리 (P-5)
+    const PARTICLES: [(&str, TokenKind); 11] = [
         ("만큼", TokenKind::Amount),
-        ("이랑", TokenKind::With),
         ("보다", TokenKind::Than),
         ("으로", TokenKind::Direction),
         ("에서", TokenKind::From),
@@ -535,9 +535,6 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
         ("는", TokenKind::Topic),
         ("을", TokenKind::Object),
         ("를", TokenKind::Object),
-        ("과", TokenKind::With),
-        ("와", TokenKind::With),
-        ("랑", TokenKind::With),
         ("의", TokenKind::Gen),
         ("에", TokenKind::Locative),
         ("로", TokenKind::Direction),
@@ -568,6 +565,9 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 // This lexer stays conservative for short Hangul bases so words like `나이`
 // are not incorrectly normalized into `나` + `이`. Parser-side helpers handle
 // a few high-value attached forms such as one-syllable print/assign targets.
+// Longer bases are split here and the normalizer re-joins them when the
+// particle would land in front of a closer (`)`, `,`, `:`, operator, ...),
+// so bare names like `작은마을` or `이동경로` survive (P-5).
 fn should_split_word(base: &str, suffix: &str) -> bool {
     // "이다"/"이면"은 키워드 접미사이므로 base 길이와 무관하게 항상 분리한다.
     // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.

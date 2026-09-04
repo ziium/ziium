@@ -454,3 +454,60 @@ fn merge_if_scope(before: &Scope, then_scope: &Scope, else_scope: Option<&Scope>
         defined_now,
     }
 }
+
+/// P-5: `검색결과 같으면`처럼 조사 음절로 끝나는 이름이 잘려 `검색결`이 미정의로
+/// 보고될 때, 원문에서 이름 바로 뒤에 붙은 조사를 찾아 원래 이름 후보를 힌트로 덧붙인다.
+pub fn with_particle_hint(mut err: ResolveError, source: &str) -> ResolveError {
+    const PARTICLES: [&str; 15] = [
+        "이랑", "으로", "에서", "만큼", "보다", "과", "와", "랑", "로", "을", "를", "은", "는",
+        "에", "의",
+    ];
+
+    let Some(span) = err.span.as_ref() else {
+        return err;
+    };
+    if span.start_line != span.end_line || span.end_column <= span.start_column {
+        return err;
+    }
+    let Some(line) = source.lines().nth(span.start_line - 1) else {
+        return err;
+    };
+    let chars: Vec<char> = line.chars().collect();
+    let (start, end) = (span.start_column - 1, span.end_column - 1);
+    if end > chars.len() {
+        return err;
+    }
+    let name: String = chars[start..end].iter().collect();
+    if !err
+        .message
+        .starts_with(&format!("`{name}`은(는) 아직 정의되지 않았습니다"))
+    {
+        return err;
+    }
+    let rest: String = chars[end..].iter().collect();
+    let Some(particle) = PARTICLES.iter().find(|p| rest.starts_with(*p)) else {
+        return err;
+    };
+    let candidate = format!("{name}{particle}");
+    let object = if ends_with_final_consonant(particle) {
+        "을"
+    } else {
+        "를"
+    };
+    let quote = if ends_with_final_consonant(&candidate) {
+        "이라는"
+    } else {
+        "라는"
+    };
+    err.message.push_str(&format!(
+        " 바로 뒤의 `{particle}`{object} 조사로 읽었습니다. `{candidate}`{quote} 이름을 뜻했다면 그 뒤에 필요한 조사를 한 번 더 붙이세요."
+    ));
+    err
+}
+
+fn ends_with_final_consonant(word: &str) -> bool {
+    word.chars().last().is_some_and(|ch| {
+        let code = ch as u32;
+        (0xAC00..=0xD7A3).contains(&code) && !(code - 0xAC00).is_multiple_of(28)
+    })
+}

@@ -1,6 +1,10 @@
 use crate::token::{Span, Token, TokenKind};
 
 pub fn normalize_tokens(tokens: Vec<Token>) -> Vec<Token> {
+    // P-5: 문맥이 결정하는 조사 분리는 본 루프 전에 정리한다.
+    let tokens = split_with_before_comparison_verb(tokens);
+    let tokens = rejoin_particle_before_closer(tokens);
+
     let mut normalized = Vec::with_capacity(tokens.len());
     let mut index = 0;
 
@@ -368,4 +372,147 @@ fn line_has_keyword_message_tail(tokens: &[Token], mut index: usize) -> bool {
     }
 
     matches!(last_ident, Some("추가"))
+}
+
+const COMPARISON_VERBS: [&str; 4] = ["크면", "작으면", "같으면", "다르면"];
+
+/// P-5: `과/와/이랑/랑`은 한국어 비교문에서만 조사로 쓰이므로, 바로 뒤에 비교
+/// 서술어가 올 때만 `Ident("최고점과")` → `Ident("최고점") + With("과")`로 분리한다.
+/// 그 밖의 자리(`순전파결과,`, `순전파결과)`)에서는 식별자의 일부로 남긴다.
+fn split_with_before_comparison_verb(tokens: Vec<Token>) -> Vec<Token> {
+    const WITH_SUFFIXES: [&str; 4] = ["이랑", "과", "와", "랑"];
+
+    let mut result = Vec::with_capacity(tokens.len());
+    for index in 0..tokens.len() {
+        let token = &tokens[index];
+        let followed_by_verb = tokens.get(index + 1).is_some_and(|next| {
+            next.kind == TokenKind::Ident && COMPARISON_VERBS.contains(&next.lexeme.as_str())
+        });
+        if token.kind == TokenKind::Ident && followed_by_verb {
+            // 가장 긴 접미사 하나만 본다. `배이랑`을 `배이` + `랑`으로 읽지 않도록
+            // 2음절 조사 `이랑`은 base 길이와 무관하게 분리한다.
+            let split = WITH_SUFFIXES
+                .iter()
+                .find_map(|suffix| {
+                    token
+                        .lexeme
+                        .strip_suffix(suffix)
+                        .map(|base| (base, *suffix))
+                })
+                .filter(|(base, suffix)| {
+                    !base.is_empty() && (*suffix == "이랑" || base.chars().count() >= 2)
+                })
+                .map(|(base, suffix)| (base.to_string(), suffix));
+            if let Some((base, suffix)) = split {
+                let base_len = base.chars().count();
+                result.push(Token::new(
+                    TokenKind::Ident,
+                    base,
+                    Span::new(
+                        token.span.start_line,
+                        token.span.start_column,
+                        token.span.start_line,
+                        token.span.start_column + base_len,
+                    ),
+                ));
+                result.push(Token::new(
+                    TokenKind::With,
+                    suffix,
+                    Span::new(
+                        token.span.start_line,
+                        token.span.start_column + base_len,
+                        token.span.end_line,
+                        token.span.end_column,
+                    ),
+                ));
+                continue;
+            }
+        }
+        result.push(token.clone());
+    }
+    result
+}
+
+/// P-5: 렉서가 `작은마을` → `작은마` + `을`처럼 잘라 낸 조사가 닫는 괄호, 쉼표,
+/// 콜론, 이항 연산자, 줄 끝, `함수` 앞에 놓이면 조사가 설 자리가 아니므로
+/// 원래 단어로 되돌린다. 붙어 있던 조사만 대상이며(span 인접), 띄어 쓴 조사는 건드리지 않는다.
+fn rejoin_particle_before_closer(tokens: Vec<Token>) -> Vec<Token> {
+    let mut result: Vec<Token> = Vec::with_capacity(tokens.len());
+    let mut index = 0;
+    while index < tokens.len() {
+        let token = &tokens[index];
+        let Some(particle) = tokens.get(index + 1) else {
+            result.push(token.clone());
+            index += 1;
+            continue;
+        };
+        let attached = token.kind == TokenKind::Ident
+            && is_attached_particle(particle.kind)
+            && token.span.start_line == particle.span.start_line
+            && token.span.end_column == particle.span.start_column;
+        let before_closer = tokens
+            .get(index + 2)
+            .is_some_and(|next| is_particle_closer(next.kind));
+        if attached && before_closer {
+            result.push(Token::new(
+                TokenKind::Ident,
+                format!("{}{}", token.lexeme, particle.lexeme),
+                Span::new(
+                    token.span.start_line,
+                    token.span.start_column,
+                    particle.span.end_line,
+                    particle.span.end_column,
+                ),
+            ));
+            index += 2;
+            continue;
+        }
+        result.push(token.clone());
+        index += 1;
+    }
+    result
+}
+
+fn is_attached_particle(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Topic
+            | TokenKind::Object
+            | TokenKind::Gen
+            | TokenKind::Locative
+            | TokenKind::From
+            | TokenKind::Direction
+            | TokenKind::Than
+            | TokenKind::With
+            | TokenKind::Amount
+    )
+}
+
+/// 조사 바로 뒤에 올 수 없는 토큰. 조사 뒤에는 항상 표현식이나 서술어가 온다.
+fn is_particle_closer(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::RParen
+            | TokenKind::RBracket
+            | TokenKind::RBrace
+            | TokenKind::Comma
+            | TokenKind::Colon
+            | TokenKind::Period
+            | TokenKind::Newline
+            | TokenKind::Dedent
+            | TokenKind::Eof
+            | TokenKind::Plus
+            | TokenKind::Star
+            | TokenKind::Slash
+            | TokenKind::Percent
+            | TokenKind::Eq
+            | TokenKind::Ne
+            | TokenKind::Lt
+            | TokenKind::Le
+            | TokenKind::Gt
+            | TokenKind::Ge
+            | TokenKind::And
+            | TokenKind::Or
+            | TokenKind::Function
+    )
 }
