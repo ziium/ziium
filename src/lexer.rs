@@ -481,7 +481,7 @@ fn peek_char(chars: &[char], index: usize) -> Option<char> {
     chars.get(index).copied()
 }
 
-fn exact_word_kind(word: &str) -> Option<TokenKind> {
+pub(crate) fn exact_word_kind(word: &str) -> Option<TokenKind> {
     match word {
         "함수" => Some(TokenKind::Function),
         "이다" => Some(TokenKind::Copula),
@@ -568,7 +568,7 @@ fn split_attached_word(word: &str) -> Option<(String, TokenKind, String)> {
 // Longer bases are split here and the normalizer re-joins them when the
 // particle would land in front of a closer (`)`, `,`, `:`, operator, ...),
 // so bare names like `작은마을` or `이동경로` survive (P-5).
-fn should_split_word(base: &str, suffix: &str) -> bool {
+pub(crate) fn should_split_word(base: &str, suffix: &str) -> bool {
     // "이다"/"이면"은 키워드 접미사이므로 base 길이와 무관하게 항상 분리한다.
     // "인"은 normalizer가 "X인 동안" 문맥에서만 분리하므로 여기선 제외.
     if matches!(

@@ -489,6 +489,26 @@ pub fn with_particle_hint(mut err: ResolveError, source: &str) -> ResolveError {
         return err;
     };
     let candidate = format!("{name}{particle}");
+    // 후보 이름이 소스의 다른 자리에서 조사나 구분자와 함께 쓰였을 때만 힌트를 낸다.
+    // `점수를 출력한다`처럼 평범한 미정의 이름에는 `점수를`을 제안하지 않는다.
+    let error_offset: usize = source
+        .lines()
+        .take(span.start_line - 1)
+        .map(|l| l.chars().count() + 1)
+        .sum::<usize>()
+        + start;
+    let used_elsewhere = source
+        .char_indices()
+        .filter(|(byte, _)| source[*byte..].starts_with(&candidate))
+        .any(|(byte, _)| {
+            let char_offset = source[..byte].chars().count();
+            let after = source[byte + candidate.len()..].chars().next();
+            char_offset != error_offset
+                && after.is_some_and(|ch| "은는이가을를의에로으과와랑보만,)]}:".contains(ch))
+        });
+    if !used_elsewhere {
+        return err;
+    }
     let object = if ends_with_final_consonant(particle) {
         "을"
     } else {

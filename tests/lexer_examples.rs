@@ -329,6 +329,64 @@ fn keeps_with_syllable_before_binary_operator() {
 }
 
 #[test]
+fn keeps_object_syllable_before_operator_index_and_call() {
+    assert_lex(
+        "값은 작은마을 + 1이다",
+        &[
+            "IDENT(\"값\")",
+            "Topic(\"은\")",
+            "IDENT(\"작은마을\")",
+            "Plus(\"+\")",
+            "INT(1)",
+            "Copula(\"이다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "이동경로[0]을 출력한다",
+        &[
+            "IDENT(\"이동경로\")",
+            "LBracket(\"[\")",
+            "INT(0)",
+            "RBracket(\"]\")",
+            "Object(\"을\")",
+            "Print(\"출력한다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "작은마을()을 출력한다",
+        &[
+            "IDENT(\"작은마을\")",
+            "LParen(\"(\")",
+            "RParen(\")\")",
+            "Object(\"을\")",
+            "Print(\"출력한다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "값에 (1 + 2)를 넣는다",
+        &[
+            "IDENT(\"값\")",
+            "Locative(\"에\")",
+            "LParen(\"(\")",
+            "INT(1)",
+            "Plus(\"+\")",
+            "INT(2)",
+            "RParen(\")\")",
+            "Object(\"를\")",
+            "Store(\"넣는다\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+}
+
+#[test]
 fn keeps_rang_syllable_in_bare_identifier() {
     assert_lex(
         "(첫사랑)을 출력한다",
@@ -359,12 +417,36 @@ fn splits_with_particle_only_before_comparison_verb() {
         ],
     );
     assert_lex(
-        "사과가 배이랑 같으면",
+        "값이 나이랑 같으면",
         &[
-            "IDENT(\"사과\")",
+            "IDENT(\"값\")",
+            "Subject(\"이\")",
+            "IDENT(\"나이\")",
+            "With(\"랑\")",
+            "IDENT(\"같으면\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "맞음여부가 참과 같으면",
+        &[
+            "IDENT(\"맞음여부\")",
             "Subject(\"가\")",
-            "IDENT(\"배\")",
-            "With(\"이랑\")",
+            "True(\"참\")",
+            "With(\"과\")",
+            "IDENT(\"같으면\")",
+            "NEWLINE",
+            "EOF",
+        ],
+    );
+    assert_lex(
+        "값이 x와 같으면",
+        &[
+            "IDENT(\"값\")",
+            "Subject(\"이\")",
+            "IDENT(\"x\")",
+            "With(\"와\")",
             "IDENT(\"같으면\")",
             "NEWLINE",
             "EOF",

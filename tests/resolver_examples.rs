@@ -184,6 +184,7 @@ fn allows_reassign_to_function_param() {
 fn hints_attached_with_particle_when_name_is_undefined() {
     let source = indoc! {"
         점수는 1이다
+        검색결과는 1이다
         점수가 검색결과 같으면
           1을 출력한다
     "};
@@ -195,8 +196,23 @@ fn hints_attached_with_particle_when_name_is_undefined() {
 
 #[test]
 fn hints_attached_direction_particle_when_name_is_undefined() {
-    let err = run_source("값은 이동경로 문자열로이다").expect_err("이동경 should be undefined");
+    let source = indoc! {"
+        이동경로는 3이다
+        값은 이동경로 문자열로이다
+    "};
+    let err = run_source(source).expect_err("이동경 should be undefined");
     let message = err.to_string();
     assert!(message.contains("`이동경`은(는) 아직 정의되지 않았습니다"));
     assert!(message.contains("`이동경로`"), "message was: {message}");
+}
+
+#[test]
+fn does_not_hint_for_plain_undefined_name_with_particle() {
+    let err = run_source("점수를 출력한다").expect_err("점수 should be undefined");
+    let message = err.to_string();
+    assert!(message.contains("`점수`은(는) 아직 정의되지 않았습니다"));
+    assert!(
+        !message.contains("조사로 읽었습니다"),
+        "message was: {message}"
+    );
 }
