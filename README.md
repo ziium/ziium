@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/badge/version-0.3-brightgreen.svg)](HISTORY.md)
 [![Rust 2024](https://img.shields.io/badge/rust-2024_edition-orange.svg)](https://www.rust-lang.org/)
 
-[문법 명세](docs/LANGUAGE.md) · [예제 모음](samples/README.md) · [브라우저 Playground](#브라우저-playground)
+[웹사이트 · Playground](https://ziium.github.io/) · [문법 명세](docs/LANGUAGE.md) · [예제 모음](samples/README.md)
 
 </div>
 
@@ -120,21 +120,34 @@ cargo run -- explain MSG301              # 진단 코드 설명 보기
 
 ## 브라우저 Playground
 
-`web/` 아래에 세 가지 데모가 있다.
+설치 없이 브라우저에서 바로 실행해 볼 수 있다 → **<https://ziium.github.io/>**
 
-- **텍스트 하노이탑** — 이동 경로를 출력으로 바로 확인
-- **캔버스 하노이탑** — `그림판` 호출로 만든 프레임을 캔버스로 재생
-- **숲속의 용사** — 비교, 상대적 변화, 선택 프레임을 사용한 텍스트 어드벤처
+| 페이지 | 내용 |
+|--------|------|
+| [Playground](https://ziium.github.io/) | 코드를 고쳐 바로 실행 — 첫인사, 텍스트 하노이탑, 캔버스 하노이탑, XOR 신경망 |
+| [숲속의 용사](https://ziium.github.io/story.html) | 비교, 상대적 변화, 선택 프레임을 사용한 텍스트 어드벤처 |
+| [Rosetta Stone](https://ziium.github.io/rosetta.html) | Python/Ruby 문법과 나란히 놓고 보는 비교표 |
+| [Changelog](https://ziium.github.io/changelog.html) | 버전별 변경 사항 |
+
+<details>
+<summary>사이트를 로컬에서 띄우기</summary>
+
+사이트 소스는 별도 저장소 [ziium/ziium.github.io](https://github.com/ziium/ziium.github.io)에 있고,
+이 저장소는 WASM 인터프리터만 제공한다.
 
 ```bash
+git clone https://github.com/ziium/ziium.github.io ../site
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
-wasm-pack build --target web --out-dir web/pkg
-python3 -m http.server 8000 --directory web
+wasm-pack build --release --target web --out-dir ../site/pkg
+python3 -m http.server 8000 --directory ../site
 # → http://localhost:8000
 ```
 
-> 자세한 내용은 [web/README.md](web/README.md).
+</details>
+
+> 이 저장소에 push해도 사이트는 자동 재배포되지 않는다. 사이트 저장소의 `Deploy Pages`
+> 워크플로가 실행될 때 ziium `main`을 새로 체크아웃해 WASM을 다시 빌드한다.
 
 ## 문서
 
